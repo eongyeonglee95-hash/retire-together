@@ -11,11 +11,23 @@ strategies:
       mid_bond: 15
       gold: 7.5
       commodity: 7.5
+  k_all_weather:
+    name: K-올웨더 (김성일, 『마법의 연금굴리기』)
+    threshold_pp: 5
+    min_trade_krw: 100000
+    targets: {}              # 리서치 대기 — docs/wiki/strategies/ 에서 출처와 함께 채움. 화면 '비율 편집'으로 임시 입력 가능
+    source: null
+  park_gomhee:
+    name: 박곰희 기본형
+    threshold_pp: 5
+    min_trade_krw: 100000
+    targets: {}              # 리서치 대기
+    source: null
   custom:
     name: 직접 설정
     threshold_pp: 5
     min_trade_krw: 100000
-    targets: {}              # 사용자가 채움
+    targets: {}              # 사용자가 화면에서 채움
 
 # "왜 지금" 설명용 가정 하락장 (docs/CALCULATION_RULES.md §3)
 shock:

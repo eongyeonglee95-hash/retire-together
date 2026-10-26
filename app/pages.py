@@ -110,10 +110,30 @@ def rebalancing(view: str) -> None:
     if unmapped:
         st.error("자산군 미분류 종목: " + ", ".join(unmapped) + " → rules/asset_map.yaml에 추가 필요")
 
+    from tools.strategy import ASSET_CLASSES, CLASS_LABELS, has_targets, save_targets
+    with st.expander("비율 편집 — 이 전략의 자산군 목표 비율(%)", expanded=not has_targets(strategy_id)):
+        import yaml as _yaml
+        from tools.strategy import STRATEGIES_PATH
+        raw = _yaml.safe_load(STRATEGIES_PATH.read_text(encoding="utf-8"))["strategies"].get(strategy_id, {})
+        cur = raw.get("targets") or {}
+        if not cur:
+            st.caption("비율이 아직 없어요. 저자 비율은 리서치(/wiki-research)에서 출처와 함께 채우고, 지금은 임시로 넣어 쓸 수 있어요.")
+        cols = st.columns(len(ASSET_CLASSES))
+        vals = {}
+        for c, cls in zip(cols, ASSET_CLASSES):
+            vals[cls] = c.number_input(CLASS_LABELS[cls], min_value=0.0, max_value=100.0, value=float(cur.get(cls, 0)), step=0.5, key=f"tgt_{strategy_id}_{cls}")
+        total = sum(vals.values())
+        th = st.number_input("발동 임계치 (±%p)", min_value=0.5, max_value=20.0, value=float(raw.get("threshold_pp", 5)), step=0.5, key=f"th_{strategy_id}")
+        src = st.text_input("출처 (책·페이지·링크)", value=raw.get("source") or "", key=f"src_{strategy_id}")
+        c1, c2 = st.columns([1, 3])
+        c2.caption(f"합계 {total:.1f}% — 100이어야 저장돼요")
+        if c1.button("비율 저장", disabled=abs(total - 100) > 1e-6, key=f"save_{strategy_id}"):
+            save_targets(strategy_id, vals, threshold_pp=th, source=src or None)
+            st.success("저장했어요 (rules/strategies.yaml)."); st.rerun()
     try:
         strategy = load_strategy(strategy_id)
     except ValueError as e:
-        st.error(str(e))
+        st.warning("이 전략은 비율이 비어 있어요. 위 '비율 편집'에서 채우거나 다른 전략을 고르세요.")
         return
     new_cash = NewCash(int(new_cash_amt), pool["accounts"][0]) if new_cash_amt else None
     defaults = defaults_with_prices(holdings, live=True)

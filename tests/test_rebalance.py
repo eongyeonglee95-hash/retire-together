@@ -136,3 +136,16 @@ def test_full_align_trades_classes_inside_threshold():
     r2 = compute_rebalance(holdings(), strat(), accounts=ACCOUNTS, full_align=True)
     assert all(c["over_threshold"] for c in r2.classes if c["asset_class"] != "cash")
     assert not any(c["asset_class"] == "mid_bond" and c["over_threshold"] for c in r1.classes)
+
+
+def test_save_targets_roundtrip(tmp_path):
+    import shutil
+    from tools.strategy import STRATEGIES_PATH, has_targets, load_strategy, save_targets
+    p = tmp_path / "strategies.yaml"; shutil.copy(STRATEGIES_PATH, p)
+    assert not has_targets("k_all_weather", p)
+    save_targets("k_all_weather", {"stock": 35, "long_bond": 25, "mid_bond": 15, "gold": 15, "commodity": 10}, path=p, source="임시")
+    s = load_strategy("k_all_weather", p)
+    assert abs(s.targets["stock"] - 0.35) < 1e-9 and has_targets("k_all_weather", p)
+    assert abs(sum(load_strategy("all_weather", p).targets.values()) - 1) < 1e-9  # 다른 전략 보존
+    with pytest.raises(ValueError):
+        save_targets("custom", {"stock": 50}, path=p)

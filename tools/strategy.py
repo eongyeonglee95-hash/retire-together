@@ -56,3 +56,25 @@ def load_strategy(strategy_id: str, path: Path = STRATEGIES_PATH) -> Strategy:
 def list_strategies(path: Path = STRATEGIES_PATH) -> list[tuple[str, str]]:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     return [(k, v.get("name", k)) for k, v in data["strategies"].items()]
+
+
+def save_targets(strategy_id: str, targets_pct: dict[str, float], path: Path = STRATEGIES_PATH,
+                 threshold_pp: float | None = None, source: str | None = None) -> None:
+    """화면에서 입력한 비율을 YAML에 쓴다 (합 100 검증). 주석은 유지하지 않으므로 머리 주석을 다시 붙인다."""
+    total = sum(targets_pct.values())
+    if abs(total - 100) > 1e-6:
+        raise ValueError(f"비율 합계가 100이 아님: {total}")
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    raw = data["strategies"].setdefault(strategy_id, {"name": strategy_id, "threshold_pp": 5, "min_trade_krw": 100000})
+    raw["targets"] = {k: float(v) for k, v in targets_pct.items() if v}
+    if threshold_pp is not None:
+        raw["threshold_pp"] = float(threshold_pp)
+    if source is not None:
+        raw["source"] = source
+    header = "# 전략 템플릿 — 비율 숫자의 단일 원천 (docs/REBALANCING_RULES.md §1). 화면 '비율 편집'에서 저장하면 이 파일이 다시 쓰인다.\n# 합계는 반드시 100. 사용자가 선택·수정한다. Agent는 바꾸지 않는다. shock: 설명용 가정 하락장 (CALCULATION_RULES §3)\n"
+    path.write_text(header + yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+
+def has_targets(strategy_id: str, path: Path = STRATEGIES_PATH) -> bool:
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return bool((data["strategies"].get(strategy_id) or {}).get("targets"))
