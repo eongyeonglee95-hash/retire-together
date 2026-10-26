@@ -25,7 +25,8 @@ strategies:
     name: K-올웨더 (김성일, 『마법의 연금굴리기』)
     threshold_pp: 5
     min_trade_krw: 100000
-    targets: {}              # 리서치 대기 — docs/wiki/strategies/ 에서 출처와 함께 채움. 화면 '비율 편집'으로 임시 입력 가능
+    targets: {}              # 사용자 확인 대기 (2026-10-27). 후보 셋: (A) 2022·2023 기사 비율, (B) 저자 2026-10 칼럼 — wiki/strategies/kim-sungil-k-all-weather.md
+                             # (C) 시그널스노우볼 앱 "국내 올웨더" 한국 대형주 30 / 한국 국고채10년 55 / 금 15 — 김성일 원문 아님, 앱 템플릿 (wiki/sources/pension-knowledge-sources.md). 책 확인 후 사용자가 고른다
     source: null
   park_gomhee:
     name: 박곰희 포트폴리오 (『박곰희 연금 부자 수업』 2025)
