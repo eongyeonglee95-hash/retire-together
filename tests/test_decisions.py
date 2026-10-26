@@ -36,3 +36,17 @@ def test_store_latest_per_account(tmp_path, monkeypatch):
     store.save_holdings("a", a2, on=dt.date(2026, 2, 1))
     df, src = store.load_holdings(["a", "b"])
     assert df["qty"].tolist() == [5] and src["b"] == "없음"
+
+
+def test_upsert_asset_tags_and_pool_mode(tmp_path):
+    import shutil
+    from pathlib import Path
+    from tools.assets import load_asset_map, load_pools, set_pool_mode, upsert_asset_tags
+    root = Path(__file__).resolve().parents[1]
+    amap = tmp_path / "asset_map.yaml"; shutil.copy(root / "rules" / "asset_map.yaml", amap)
+    n = upsert_asset_tags([{"ticker_name": "새ETF", "ticker": "999999", "asset_class": "long_bond", "role": "core"}], path=amap)
+    assert n == 1 and load_asset_map(amap)["새ETF"]["status"] == "confirmed"
+    assert "class_defaults" in __import__("yaml").safe_load(amap.read_text(encoding="utf-8"))  # 기본 종목 보존
+    acc = tmp_path / "accounts.yaml"; shutil.copy(root / "rules" / "accounts.yaml", acc)
+    pid = set_pool_mode("me_mirae_pension_new", "rebalance", path=acc)
+    assert load_pools(acc)[pid]["mode"] == "rebalance"

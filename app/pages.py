@@ -242,7 +242,17 @@ def input_page(view: str) -> None:
     with tab0:
         _asset_sheet(accounts, root)
     with tab1:
+        from tools.assets import load_pools, set_pool_mode, upsert_asset_tags
+        from tools.strategy import CLASS_LABELS
+        pools = load_pools()
         acct = st.selectbox("계좌", list(accounts), format_func=lambda k: accounts[k].get("label", k))
+        cur_pool = next((pv for pid, pv in pools.items() if acct in pv["accounts"]), {})
+        mode = st.radio("이 계좌 운용 방식 (계좌 꼬리표)", list(MODES), index=0 if cur_pool.get("mode", "rebalance") == "rebalance" else 1,
+                        format_func=lambda k: MODES[k], horizontal=True, key=f"mode_{acct}")
+        if mode != cur_pool.get("mode", "rebalance"):
+            if st.button("운용 방식 저장"):
+                set_pool_mode(acct, mode)
+                st.success("저장했어요. 리밸런싱 화면에 반영됩니다."); st.rerun()
         images = st.file_uploader("증권사 앱 잔고 화면 캡처 (여러 장 가능, 같은 계좌)", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
         if images and st.button("표로 변환", type="primary"):
             from tools.register import register
@@ -270,15 +280,30 @@ def input_page(view: str) -> None:
                 st.warning(f"화면 합계와 {meta.get('diff', 0):+,}원 차이가 있어요. 틀린 칸을 고친 뒤 저장하세요.")
             for name, cands in meta.get("unresolved", []):
                 st.info(f"종목코드 미확정: {name} → 후보 {cands}. ticker 칸에 직접 넣어 주세요.")
-            edited = st.data_editor(st.session_state["parsed"], num_rows="dynamic", use_container_width=True, key="parsed_editor")
+            base = st.session_state["parsed"].copy()
+            if "자산군" not in base:  # 종목 꼬리표: 매핑에 있으면 채우고, 없으면 비워서 고르게
+                from tools.assets import load_asset_map
+                amap = load_asset_map()
+                cls_label = {k: v for k, v in CLASS_LABELS.items()}
+                base["자산군"] = base["ticker_name"].map(lambda n: cls_label.get(amap.get(n, {}).get("asset_class"), None))
+                base["역할"] = base["ticker_name"].map(lambda n: "위성" if amap.get(n, {}).get("role") == "satellite" else "핵심")
+                st.session_state["parsed"] = base
+            st.caption("종목 꼬리표: 자산군과 역할(핵심=넓은 지수, 위성=테마·특정 국가)을 확인하세요. 저장하면 종목 매핑에 '확인됨'으로 들어가 다음부터 안 묻습니다.")
+            edited = st.data_editor(base, num_rows="dynamic", use_container_width=True, key="parsed_editor",
+                                    column_config={"자산군": st.column_config.SelectboxColumn(options=list(CLASS_LABELS.values()), required=True),
+                                                   "역할": st.column_config.SelectboxColumn(options=["핵심", "위성"], required=True)})
             ok_to_save = True
             if not meta.get("reconciled"):
                 st.caption("합계가 안 맞는 흔한 이유: 캡처를 한 장만 올려서 화면 아래쪽 종목이 빠짐 → 그 계좌의 캡처를 전부 올려 다시 변환하세요.")
                 ok_to_save = st.checkbox("차이를 확인했고 이대로 저장할게요")
             if st.button("저장 (이 계좌의 보유 내역으로 등록)", disabled=not ok_to_save):
                 from tools.store import save_holdings
-                out = save_holdings(acct, edited)
-                st.success(f"저장: {out.relative_to(root)} — 리밸런싱 화면이 계좌별 최신 파일을 합쳐 씁니다.")
+                label_to_key = {v: k for k, v in CLASS_LABELS.items()}
+                tags = [{"ticker_name": r["ticker_name"], "ticker": r.get("ticker"), "asset_class": label_to_key.get(r.get("자산군")),
+                         "role": "satellite" if r.get("역할") == "위성" else "core"} for _, r in edited.iterrows()]
+                n = upsert_asset_tags(tags)
+                out = save_holdings(acct, edited.drop(columns=["자산군", "역할"]))
+                st.success(f"저장: {out.relative_to(root)} · 종목 꼬리표 {n}개 확인됨 — 리밸런싱 화면이 계좌별 최신 파일을 합쳐 씁니다.")
                 del st.session_state["parsed"]
     with tab2:
         f = st.file_uploader("보유 내역 CSV (열: account_id, ticker_name, ticker, qty, price …)", type=["csv"], key="csv_up")
@@ -333,6 +358,7 @@ def _asset_sheet(accounts: dict, root) -> None:
     acct_pool = {a: pid for pid, pv in pools.items() for a in pv["accounts"]}
     from tools.assets import load_asset_map
     full_names = {k: v.get("full_name", k) for k, v in load_asset_map().items()}  # 캡처에 잘린 이름 → 정식 이름
+    holdings["raw_name"] = holdings["ticker_name"]
     holdings["ticker_name"] = holdings["ticker_name"].map(lambda n: full_names.get(n, n))
     sheet = pd.DataFrame({
         "소유자": holdings["account_id"].map(lambda a: OWNERS.get(accounts.get(a, {}).get("owner"), "")),
@@ -340,7 +366,9 @@ def _asset_sheet(accounts: dict, root) -> None:
         "풀": holdings["account_id"].map(lambda a: pools.get(acct_pool.get(a), {}).get("label", acct_pool.get(a, ""))),
         "주머니": holdings["account_id"].map(lambda a: "노후" if accounts.get(a, {}).get("pocket") == "pension" else "현금"),
         "종목명": holdings["ticker_name"], "종목코드": holdings["ticker"],
+        "운용": holdings["account_id"].map(lambda a: "매수만" if pools.get(acct_pool.get(a), {}).get("mode") == "buy_only" else "리밸런싱"),
         "자산군": holdings["asset_class"].map(lambda c: CLASS_LABELS.get(c, c or "미분류")),
+        "역할": holdings["role"].map(lambda r: "위성" if r == "satellite" else "핵심") if "role" in holdings else "핵심",
         "수량": holdings["qty"], "현재가": holdings["price"],
         "매입단가": (holdings["buy_value"] / holdings["qty"]).round(0) if "buy_value" in holdings else None,
         "평가금액": holdings["qty"] * holdings["price"],
@@ -366,6 +394,21 @@ def _asset_sheet(accounts: dict, root) -> None:
                  hide_index=True, use_container_width=True)
     if unmapped:
         st.warning("자산군 미분류: " + ", ".join(unmapped))
+    with st.expander("종목 꼬리표 고치기 (자산군·역할)"):
+        from tools.assets import upsert_asset_tags
+        label_to_key = {v: k for k, v in CLASS_LABELS.items()}
+        tag_df = sheet[["종목명", "종목코드", "자산군", "역할"]].drop_duplicates("종목명").reset_index(drop=True)
+        tag_df["자산군"] = tag_df["자산군"].replace("미분류", None)
+        edited_tags = st.data_editor(tag_df, hide_index=True, use_container_width=True, key="tag_editor",
+                                     column_config={"자산군": st.column_config.SelectboxColumn(options=list(CLASS_LABELS.values()), required=True),
+                                                    "역할": st.column_config.SelectboxColumn(options=["핵심", "위성"], required=True)},
+                                     disabled=["종목명", "종목코드"])
+        if st.button("꼬리표 저장"):
+            raw_names = dict(zip(holdings["ticker_name"], holdings["raw_name"]))  # 정식 이름 → 캡처 이름(매핑 키)
+            rows = [{"ticker_name": raw_names.get(r["종목명"], r["종목명"]), "ticker": r["종목코드"], "asset_class": label_to_key.get(r["자산군"]),
+                     "role": "satellite" if r["역할"] == "위성" else "core"} for _, r in edited_tags.iterrows()]
+            n = upsert_asset_tags(rows)
+            st.success(f"{n}개 저장 (확인됨). 리밸런싱 화면은 재실행하면 반영됩니다."); st.rerun()
     buf = io.BytesIO(); sheet.to_excel(buf, index=False)
     d1, d2 = st.columns(2)
     d1.download_button("엑셀로 받기", buf.getvalue(), file_name="my_assets.xlsx")

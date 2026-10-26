@@ -131,3 +131,48 @@ def save_accounts(accounts: list[dict], pools: dict[str, dict], path: Path = ACC
 def load_accounts_list(path: Path = ACCOUNTS_PATH) -> list[dict]:
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     return list(data.get("accounts", []))
+
+
+ASSET_MAP_HEADER = """# 종목 ↔ 자산군 매핑 — 비중 계산에 쓰이는 분류의 단일 원천. 입력 화면에서 저장하면 이 파일이 다시 쓰인다.
+# asset_class: stock / long_bond / mid_bond / gold / commodity / cash · role: core(핵심) | satellite(위성, 테마) · status: proposed | confirmed
+# class_defaults: 자산군 기본 종목 (보유 없는 자산군을 살 때). 선택 규칙은 docs/REBALANCING_RULES.md §1-2
+"""
+
+
+def save_asset_map(assets: dict[str, dict], class_defaults: dict[str, dict] | None = None, path: Path = ASSET_MAP_PATH) -> None:
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    data["assets"] = assets
+    if class_defaults is not None:
+        data["class_defaults"] = class_defaults
+    path.write_text(ASSET_MAP_HEADER + yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+
+def upsert_asset_tags(rows: list[dict], path: Path = ASSET_MAP_PATH) -> int:
+    """rows: [{ticker_name, ticker, asset_class, role}] → asset_map에 confirmed로 넣거나 갱신. 바뀐 개수 반환."""
+    amap = load_asset_map(path)
+    changed = 0
+    for r in rows:
+        name = r["ticker_name"]
+        if not r.get("asset_class"):
+            continue
+        cur = amap.get(name, {})
+        new = dict(cur, ticker=str(r.get("ticker") or cur.get("ticker") or ""), asset_class=r["asset_class"],
+                   role=r.get("role") or cur.get("role", "core"), status="confirmed")
+        if new != cur:
+            amap[name] = new; changed += 1
+    if changed:
+        save_asset_map(amap, path=path)
+    return changed
+
+
+def set_pool_mode(account_id: str, mode: str, path: Path = ACCOUNTS_PATH) -> str:
+    """계좌가 속한 풀의 모드를 바꾼다. 풀이 없으면 계좌 id로 풀을 만든다. 풀 id 반환."""
+    accounts = load_accounts_list(path)
+    pools = load_pools(path)
+    acct = next(a for a in accounts if a["id"] == account_id)
+    pid = acct.get("pool") or account_id
+    acct["pool"] = pid
+    pools.setdefault(pid, {"label": acct.get("label", pid), "strategy": "all_weather", "accounts": [account_id]})
+    pools[pid]["mode"] = mode
+    save_accounts(accounts, pools, path)
+    return pid
