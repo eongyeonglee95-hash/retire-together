@@ -16,24 +16,80 @@ def _won(man: int) -> str:
     return (f"{eok}억 " if eok else "") + (f"{rest:,}만원" if rest else "원")
 
 
+def _real_numbers(view: str) -> dict:
+    """등록된 보유 내역으로 홈 숫자를 만든다. 없으면 None (샘플로 폴백)."""
+    from tools.assets import defaults_with_prices, load_accounts, load_pools, tag_holdings
+    from tools.rebalance import compute_rebalance
+    from tools.store import load_holdings
+    from tools.strategy import has_targets, load_strategy
+    from tools import explain
+
+    accounts = load_accounts()
+    owner = {"부부 전체": None, "나": "me", "배우자": "spouse"}[view]
+    ids = [a for a, v in accounts.items() if owner is None or v.get("owner") == owner]
+    holdings, sources = load_holdings(ids)
+    if holdings.empty:
+        return {"registered": False, "owner": owner}
+    holdings["value"] = holdings["qty"] * holdings["price"]
+    pocket = holdings["account_id"].map(lambda a: accounts[a].get("pocket"))
+    pension = int(holdings.loc[pocket == "pension", "value"].sum())
+    cash = int(holdings.loc[pocket == "cash", "value"].sum())
+    # 풀별 리밸런싱 상태 → 이번 달 제안
+    proposals = []
+    pools = load_pools()
+    tagged, _ = tag_holdings(holdings)
+    for pid, pv in pools.items():
+        sub = tagged[tagged["account_id"].isin([a for a in pv["accounts"] if a in ids])]
+        if sub.empty or not has_targets(pv.get("strategy") or ""):
+            continue
+        r = compute_rebalance(sub, load_strategy(pv["strategy"]), accounts=accounts, mode=pv.get("mode", "rebalance"),
+                              defaults=defaults_with_prices(sub, live=False))
+        proposals.append({"pool": pv.get("label", pid), "mode": pv.get("mode", "rebalance"), "triggered": r.triggered,
+                          "headline": explain.headline(r), "blocked": r.blocked_reason})
+    return {"registered": True, "owner": owner, "pension": pension, "cash": cash, "total": pension + cash,
+            "n_accounts": holdings["account_id"].nunique(), "proposals": proposals, "sources": sources,
+            "cash_registered": bool((pocket == "cash").any())}
+
+
 def home(view: str) -> None:
-    d = SAMPLE[view]
-    st.caption("지금의 선택이, 10년 후의 삶을 만듭니다. (샘플 숫자 — 실제 연동은 다음 단계)")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("총 자산", _won(d["total"]), d["delta"] + " 전분기 대비")
-    c2.metric("노후 주머니 (연금)", _won(d["pension"]), f"{d['pension_pct']}%")
-    c3.metric("갈아타기 주머니 (현금)", _won(d["cash"]), f"{d['cash_pct']}%")
+    d = _real_numbers(view)
+    if not d["registered"]:
+        s = SAMPLE[view]
+        st.caption("지금의 선택이, 10년 후의 삶을 만듭니다. (이 보기에는 등록된 계좌가 없어 샘플 숫자입니다 → 입력 메뉴에서 등록)")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("총 자산", _won(s["total"]), "샘플")
+        c2.metric("노후 주머니 (연금)", _won(s["pension"]), f"{s['pension_pct']}% 샘플")
+        c3.metric("갈아타기 주머니 (현금)", _won(s["cash"]), f"{s['cash_pct']}% 샘플")
+    else:
+        st.caption("지금의 선택이, 10년 후의 삶을 만듭니다. (등록된 보유 내역 기준, 등록 때 가격)")
+        total = d["total"] or 1
+        c1, c2, c3 = st.columns(3)
+        c1.metric("총 자산 (등록분)", f"{d['total']/10_000:,.0f}만원", f"계좌 {d['n_accounts']}개")
+        c2.metric("노후 주머니 (연금)", f"{d['pension']/10_000:,.0f}만원", f"{d['pension']/total*100:.0f}%")
+        if d["cash_registered"]:
+            c3.metric("갈아타기 주머니 (현금)", f"{d['cash']/10_000:,.0f}만원", f"{d['cash']/total*100:.0f}%")
+        else:
+            c3.metric("갈아타기 주머니 (현금)", "미등록", "키움 주식계좌는 PoC 범위 밖")
 
     st.subheader("이번 달 제안")
-    a, b = st.columns(2)
-    with a:
-        st.warning("**리밸런싱이 필요해요** — 연금저축(구) 주식 비중이 목표보다 높아요. 리밸런싱 메뉴에서 주문표를 확인하세요.")
-    with b:
-        st.info("**IRP 세액공제 한도 300만원 남았어요** — 올해 안에 납입하면 매수만 모드로 자동 배분 제안을 받을 수 있어요.")
+    props = d.get("proposals") or []
+    if props:
+        cols = st.columns(min(len(props), 3))
+        for c, pr in zip(cols * 3, props):
+            text = f"**{pr['pool']}** · {'매수만' if pr['mode']=='buy_only' else '리밸런싱'}\n\n{pr['headline']}"
+            if pr["blocked"]:
+                c.error(text)
+            elif pr["triggered"]:
+                c.warning(text + "\n\n→ 리밸런싱 메뉴에서 주문표 확인")
+            else:
+                c.success(text)
+    else:
+        st.info("등록된 계좌가 있으면 풀별 리밸런싱 상태가 여기 뜹니다.")
+    st.info("**IRP 세액공제 한도 300만원 남았어요** — 올해 안에 납입하면 매수만 모드로 배분 제안을 받을 수 있어요. (수동 메모, 자동 계산은 v1.5)")
 
     st.subheader("이번 달 체크리스트")
-    st.checkbox("연금 납입 확인하기", value=True)
-    st.checkbox("연금저축 리밸런싱 검토", value=False)
+    st.checkbox("연금 납입 확인하기", value=False)
+    st.checkbox("연금저축 리밸런싱 검토", value=any(p["triggered"] for p in props) if props else False)
     st.checkbox("대출 상환 계획 점검", value=False)
 
 
