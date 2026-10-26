@@ -1,0 +1,27 @@
+# 전략 템플릿 — 비율 숫자의 단일 원천 (docs/REBALANCING_RULES.md §1)
+# 합계는 반드시 100. 사용자가 선택·수정한다. Agent는 바꾸지 않는다.
+strategies:
+  all_weather:
+    name: 올웨더(달리오 원형)
+    threshold_pp: 5          # 발동 임계치 ±5%p (2026-10-26 확정)
+    min_trade_krw: 100000    # 최소 거래 금액
+    targets:
+      stock: 30
+      long_bond: 40
+      mid_bond: 15
+      gold: 7.5
+      commodity: 7.5
+  custom:
+    name: 직접 설정
+    threshold_pp: 5
+    min_trade_krw: 100000
+    targets: {}              # 사용자가 채움
+
+# "왜 지금" 설명용 가정 하락장 (docs/CALCULATION_RULES.md §3)
+shock:
+  stock: -0.30
+  long_bond: 0.05
+  mid_bond: 0.02
+  gold: 0.0
+  commodity: -0.10
+  cash: 0.0

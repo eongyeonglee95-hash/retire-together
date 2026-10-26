@@ -1,0 +1,44 @@
+# 종목 ↔ 자산군 매핑 — 비중 계산에 쓰이는 분류의 단일 원천
+# 미등록 종목은 LLM이 첫 분류를 제안 → 사용자 확인 → 여기에 저장. 이후 실행은 이 파일만 읽는다.
+# 자산군 키: stock / long_bond / mid_bond / gold / commodity / cash
+# status: proposed(제안, 사용자 확인 전) | confirmed(확인됨). 2026-10-26 아래 9개는 Claude 제안 — 확인해 주세요.
+assets:
+  "KODEX 차이나휴머노이":          # 캡처에 잘려 보이는 이름 그대로가 키
+    ticker: "0048K0"
+    full_name: KODEX 차이나휴머노이드로봇
+    asset_class: stock
+    status: proposed
+  "TIGER KRX금현물":
+    ticker: "0072R0"
+    asset_class: gold
+    status: proposed
+  "TIGER 미국S&P500":
+    ticker: "360750"
+    asset_class: stock
+    status: proposed
+  "ACE 미국나스닥100":
+    ticker: "367380"
+    asset_class: stock
+    status: proposed
+  "KODEX 인도타타그룹":
+    ticker: "477730"
+    asset_class: stock
+    status: proposed
+  "TIGER 차이나휴머노이":
+    ticker: "0053L0"
+    full_name: TIGER 차이나휴머노이드로봇
+    asset_class: stock
+    status: proposed
+  "ACE 종합채권(AA-이상)":
+    ticker: "356540"
+    full_name: ACE 종합채권(AA-이상)액티브
+    asset_class: mid_bond      # 국내 종합채권(듀레이션 중기). 장기채로 볼지는 사용자 결정
+    status: proposed
+  "ACE 미국S&P500":
+    ticker: "360200"
+    asset_class: stock
+    status: proposed
+  "ACE KRX금현물":
+    ticker: "411060"
+    asset_class: gold
+    status: proposed

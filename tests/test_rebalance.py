@@ -1,0 +1,121 @@
+"""compute_rebalance 단위 테스트 — docs/AGENT_DESIGN.md 완료 기준 1·3·4·6 + 규칙."""
+from pathlib import Path
+
+import pandas as pd
+import pytest
+
+from tools import explain
+from tools.assets import tag_holdings
+from tools.parse_balance import load_holdings_csv
+from tools.rebalance import NewCash, compute_rebalance
+from tools.strategy import Strategy, load_strategy
+
+ROOT = Path(__file__).resolve().parents[1]
+FIXTURE = ROOT / "data" / "fixtures" / "holdings_fixture.csv"
+ACCOUNTS = {"acct_a": {"account_type": "pension_savings"}, "acct_b": {"account_type": "pension_savings"}}
+
+
+def holdings():
+    h, unmapped = tag_holdings(load_holdings_csv(FIXTURE))
+    assert not unmapped
+    return h
+
+
+def strat(**over):
+    base = dict(id="t", name="테스트", targets={"stock": 0.3, "long_bond": 0.4, "mid_bond": 0.15, "gold": 0.075, "commodity": 0.075},
+                threshold=0.05, min_trade_krw=100_000, shock={"stock": -0.3, "long_bond": 0.05, "mid_bond": 0.02, "gold": 0.0, "commodity": -0.1})
+    base.update(over)
+    return Strategy(**base)
+
+
+def test_same_input_same_orders():  # 완료 기준 1
+    a = compute_rebalance(holdings(), strat(), accounts=ACCOUNTS)
+    b = compute_rebalance(holdings(), strat(), accounts=ACCOUNTS)
+    assert [o.__dict__ for o in a.orders] == [o.__dict__ for o in b.orders]
+    assert a.classes == b.classes
+
+
+def test_weights_and_trigger():
+    r = compute_rebalance(holdings(), strat(), accounts=ACCOUNTS)
+    assert r.total_value == 39_050_000
+    by = {c["asset_class"]: c for c in r.classes}
+    assert by["stock"]["value"] == 25_000_000 and abs(by["stock"]["current"] - 25 / 39.05) < 1e-9
+    assert by["stock"]["over_threshold"] and by["long_bond"]["over_threshold"]
+    assert not by["mid_bond"]["over_threshold"]  # -2.2%p
+    assert r.triggered
+
+
+def test_target_change_changes_orders():  # 완료 기준 3
+    r1 = compute_rebalance(holdings(), strat(), accounts=ACCOUNTS)
+    r2 = compute_rebalance(holdings(), strat(targets={"stock": 0.6, "mid_bond": 0.15, "gold": 0.25}), accounts=ACCOUNTS)
+    assert [o.__dict__ for o in r1.orders] != [o.__dict__ for o in r2.orders]
+    sells2 = [o for o in r2.orders if o.side == "매도"]
+    assert all(o.asset_class != "stock" for o in sells2)  # 주식 64% vs 목표 60%: 임계치 안 → 매도 없음
+
+
+def test_leverage_etf_blocks_order_sheet():  # 완료 기준 4
+    h = holdings()
+    h.loc[0, "ticker_name"] = "KODEX 레버리지"
+    h.loc[0, "asset_class"] = "stock"
+    r = compute_rebalance(h, strat(), accounts=ACCOUNTS)
+    assert r.blocked_reason and "레버리지" in r.blocked_reason
+    assert r.orders == []
+
+
+def test_cashflow_first_buys_only_when_within_threshold():
+    # 모든 자산군이 임계치 안인 전략 + 납입 → 매도 없이 매수만
+    h = holdings()
+    s = strat(targets={"stock": 0.64, "mid_bond": 0.13, "gold": 0.23})
+    r = compute_rebalance(h, s, new_cash=NewCash(3_000_000, "acct_a"), accounts=ACCOUNTS)
+    assert not r.triggered
+    assert all(o.side != "매도" for o in r.orders)
+    buys = [o for o in r.orders if o.side == "매수"]
+    assert buys and all(o.account_id == "acct_a" for o in buys)  # 납입 들어간 계좌에서만
+    assert sum(o.amount for o in buys) <= 3_000_000
+
+
+def test_sell_then_buy_order_and_cash_stays_in_account():
+    r = compute_rebalance(holdings(), strat(), accounts=ACCOUNTS)
+    sides = [o.side for o in r.orders if o.side != "생략"]
+    assert sides == sorted(sides, key=lambda s: {"매도": 0, "매수": 1}[s])
+    for acct in ("acct_a", "acct_b"):
+        sells = sum(o.amount for o in r.orders if o.side == "매도" and o.account_id == acct)
+        buys = sum(o.amount for o in r.orders if o.side == "매수" and o.account_id == acct)
+        assert buys <= sells + 1  # 계좌 안의 현금으로만 매수
+
+
+def test_min_trade_skipped():
+    s = strat(min_trade_krw=10_000_000)
+    r = compute_rebalance(holdings(), s, accounts=ACCOUNTS)
+    assert all(o.side == "생략" for o in r.orders if o.asset_class == "gold" and o.account_id == "acct_a")
+
+
+def test_explain_has_no_forbidden_words_and_correct_losses():  # 완료 기준 6
+    r = compute_rebalance(holdings(), strat(), accounts=ACCOUNTS)
+    text = explain.why_now(r)
+    assert not any(w in text for w in explain.FORBIDDEN)
+    # L_now = Σ w_i·shock_i·T = (-0.3·25,000,000) + (0.02·5,000,000) = -7,400,000
+    assert r.explain_inputs["loss_now"] == 7_400_000
+    assert r.explain_inputs["loss_target"] < r.explain_inputs["loss_now"]
+
+
+def test_load_strategy_from_yaml():
+    s = load_strategy("all_weather")
+    assert abs(sum(s.targets.values()) - 1) < 1e-9 and s.threshold == 0.05
+    with pytest.raises(ValueError):
+        load_strategy("custom")  # 비율 비어 있음
+
+
+def test_buy_only_mode_never_sells():
+    h = holdings()
+    r = compute_rebalance(h, strat(), new_cash=NewCash(3_000_000, "acct_a"), accounts=ACCOUNTS, mode="buy_only")
+    assert r.triggered  # 편차는 크지만
+    assert all(o.side != "매도" for o in r.orders)
+    buys = [o for o in r.orders if o.side == "매수"]
+    assert buys and sum(o.amount for o in buys) <= 3_000_000
+    assert buys[0].asset_class == "long_bond"  # 가장 부족한 자산군부터
+
+
+def test_buy_only_without_cash_does_nothing():
+    r = compute_rebalance(holdings(), strat(), accounts=ACCOUNTS, mode="buy_only")
+    assert r.orders == [] and any("매수만 모드" in n for n in r.notes)
