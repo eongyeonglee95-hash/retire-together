@@ -323,6 +323,9 @@ def _asset_sheet(accounts: dict, root) -> None:
     holdings, unmapped = tag_holdings(holdings)
     pools = load_pools()
     acct_pool = {a: pid for pid, pv in pools.items() for a in pv["accounts"]}
+    from tools.assets import load_asset_map
+    full_names = {k: v.get("full_name", k) for k, v in load_asset_map().items()}  # 캡처에 잘린 이름 → 정식 이름
+    holdings["ticker_name"] = holdings["ticker_name"].map(lambda n: full_names.get(n, n))
     sheet = pd.DataFrame({
         "소유자": holdings["account_id"].map(lambda a: OWNERS.get(accounts.get(a, {}).get("owner"), "")),
         "계좌": holdings["account_id"].map(lambda a: accounts.get(a, {}).get("label", a)),
