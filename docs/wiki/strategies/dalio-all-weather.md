@@ -3,7 +3,7 @@
 
 ## 요약 (5줄 이내)
 - "올웨더"는 두 가지가 섞여 불린다. ① Bridgewater가 1996년부터 운용하는 원래 **All Weather**(리스크 패리티, 레버리지 사용, 비율 비공개·가변) ② 달리오가 Tony Robbins 책 『Money: Master the Game』(2014) 인터뷰에서 개인용으로 단순화해 준 **All Seasons**(레버리지 없음, 고정 비율 30/40/15/7.5/7.5).
-- `rules/strategies.yaml`의 `all_weather` 숫자(stock 30 / long_bond 40 / mid_bond 15 / gold 7.5 / commodity 7.5)는 ②All Seasons다. (2026-10-26 사용자 결정으로 YAML은 원자재를 금에 합쳐 gold 15 — 원형과 다름. 사유는 docs/DECISIONS.md) Robbins 공식 사이트에서 확인됨 ([출처 R1](#출처-열어본-페이지만-날짜)).
+- `rules/strategies.yaml`의 `all_weather` 숫자(stock 30 / long_bond 40 / mid_bond 15 / gold 7.5 / commodity 7.5)는 ②All Seasons다. (2026-10-27 사용자 결정: YAML은 시그널스노우볼 앱 "해외 올웨더" 30/40/15/8/7 — 금·원자재만 반올림. 사유는 docs/DECISIONS.md) Robbins 공식 사이트에서 확인됨 ([출처 R1](#출처-열어본-페이지만-날짜)).
 - 채권 정의도 Robbins 사이트 기준: 중기채 = 미국 국채 7~10년, 장기채 = 미국 국채 20~25년 ([R1](#출처-열어본-페이지만-날짜)).
 - 리밸런싱: Robbins 사이트는 "최소 연 1회, 원래 비율로 되돌림"이라고 쓴다. 밴드(±n%p) 규칙은 1차 출처에서 **미확인**. `threshold_pp: 5`는 우리 가정값이다.
 - 달리오의 이유: 경제 환경을 성장·물가 각각의 상승/하락 4가지로 나누고, 어느 환경이 올지 맞히지 않고 4개 환경에 **리스크를 균등**하게 배분한다 ([B1](#출처-열어본-페이지만-날짜)).

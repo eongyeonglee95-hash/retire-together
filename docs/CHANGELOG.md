@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## 2026-10-27
+- strategies.yaml all_weather: 시그널스노우볼 해외 올웨더 템플릿으로 교체(30/15/40/8/7, 종목 5개). REBALANCING §4-1 사유 다시 씀(26일 결정 3건 뒤집음). DECISIONS 기록
 - DECISIONS: 전략 카드 "예) 종목 + 면책 문구" 표시 방식 채택(시그널스노우볼 참고). 구현은 UI 트랙
 - strategies.yaml park_gomhee: 책 비율(stock 70 / long_bond 20 / gold 5 / cash 5)·종목 4개·labels 반영. 이름 "박곰희 포트폴리오"로
 - 사용자 승인으로 concept.jpg 기준 React/TypeScript/Vite + Python/FastAPI 전환·입력/보안 보강·컨셉 홈 우선 검수를 현재 계획으로 반영. CLAUDE/AGENTS, MASTER_CONTEXT/PRD, SCREEN_REFERENCE, AGENT_DESIGN §0을 정렬하고 이전 PoC 체크리스트를 이력으로 구분. Claude 리서치 보존·담당 경로·수신 확인 절차 명시. 구현 착수/수락은 별도 상태로 관리.

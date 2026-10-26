@@ -191,10 +191,10 @@ def test_strategy_instrument_beats_held_ticker_on_buy():
 
 
 def test_strategy_labels_show_in_classes_and_order_sheet():
-    """전략 labels(올웨더 gold → '금 (=원자재)')가 자산군 표와 주문표에 나온다."""
+    """전략 labels(예: gold → '금 (=원자재)')가 자산군 표와 주문표에 나온다. 박곰희 템플릿은 YAML labels도 확인."""
     from tools.order_sheet import classes_table, orders_table
-    s = load_strategy("all_weather")
-    assert s.labels.get("gold") == "금 (=원자재)"
+    assert load_strategy("park_gomhee").labels.get("cash") == "달러"
+    s = strat(labels={"gold": "금 (=원자재)"})
     r = compute_rebalance(holdings(), s, accounts=ACCOUNTS, mode="rebalance", full_align=True)
     assert "금 (=원자재)" in classes_table(r)["자산군"].tolist()
     gold_orders = orders_table(r)[orders_table(r)["구분"] != "생략"]

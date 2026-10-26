@@ -2,25 +2,27 @@
 # 합계는 반드시 100. 사용자가 선택·수정한다. Agent는 바꾸지 않는다.
 strategies:
   all_weather:
-    name: 올웨더(달리오 원형)
-    threshold_pp: 5          # 발동 임계치 ±5%p (2026-10-26 확정)
-    min_trade_krw: 100000    # 최소 거래 금액
+    name: 올웨더(해외) — 시그널스노우볼 템플릿 기준
+    threshold_pp: 5          # 발동 임계치 ±5%p (2026-10-26 확정). 앱은 "매년 1회" 리밸런싱이지만 우리는 밴드만 쓴다
+    min_trade_krw: 100000
+    # 2026-10-27 사용자 결정: 시그널스노우볼 앱 "③ 해외 올웨더 포트폴리오" 비율·예시 종목을 그대로 쓴다 (사용자 캡처, wiki/sources/pension-knowledge-sources.md).
+    # 2026-10-26 결정 세 가지(금=원자재 15, 장기채 환노출 476760, 중기채 ACE 국고채10년 365780)를 이것으로 대체. 사유는 docs/DECISIONS.md·REBALANCING §4-1.
+    # 원형(로빈스 All Seasons)은 30/40/15/7.5/7.5 — 앱은 금 8 / 원자재 7로 반올림.
     targets:
       stock: 30
       long_bond: 40
       mid_bond: 15
-      gold: 15                 # 원형은 금 7.5 + 원자재 7.5. 2026-10-26 사용자: 국내 상장 원자재 바스켓 ETF가 없어 원자재를 금에 합침 (단일 원자재 ETF는 품목 베팅·고비용). 바스켓 ETF가 생기면 다시 나눈다
-    labels:
-      gold: "금 (=원자재)"     # 화면·주문표 표시. 원자재 몫을 금이 대신한다는 뜻
-    # 전략이 정하는 자산군별 종목 유형과 기본 종목 (REBALANCING §1-2 2층 구조, 2026-10-26). ticker가 있으면 asset_map class_defaults보다 우선.
-    # type은 사람이 읽는 설명(원형 정의, docs/wiki/strategies/dalio-all-weather.md). 유형 안에서 종목 하나는 §1-2 ④~⑥ 룰로 고른다.
+      gold: 8
+      commodity: 7
+    source: "시그널스노우볼(해빗팩토리) 예상 연금 탭 '③ 해외 올웨더 포트폴리오', 2026-10 기준 예시. 사용자 캡처 2026-10-27"
+    # 전략이 정하는 자산군별 종목 유형과 기본 종목 (REBALANCING §1-2 2층 구조). ticker가 있으면 asset_map class_defaults보다 우선. 매수는 지정 종목으로.
+    # 앱 면책 문구: "종목코드는 2026년 10월 기준 예시이며, 추천이 아닙니다. 매수 전 거래 증권사에서 직접 확인하세요" — 우리도 같은 뜻.
     instruments:
-      long_bond: {ticker: "476760", name: ACE 미국30년국채액티브, type: "미국 국채 20년+ 환노출 (2026-10-26 사용자 확정. 유형 안에서 거래량 40만주·보수 0.05%로 선택, wiki/products/long-bond-commodity-candidates.md)"}
-      # 중기채 코멘트 (2026-10-26 사용자): 보유 중인 ACE 종합채권(AA-이상)액티브(356540)는 mid_bond로 분류하되, 올웨더 원형의 중기채(미국 국채 7~10년, 듀레이션 7~8년)보다
-      # 듀레이션이 짧고(4.7년) 회사채·통안채가 섞여 완충이 약하다. 그래서 올웨더에서 중기채를 새로 살 때는 만기가 원형에 가까운 국고채 10년물을 쓴다 (같은 운용사, 보수 0.02%).
-      # 기존 종합채권은 팔지 않고 중기채로 계속 센다. 근거: docs/wiki/products/holdings-classification.md
-      mid_bond:  {ticker: "365780", name: ACE 국고채10년, type: "미국 국채 7~10년 원형 → 국내 국고채 10년(듀레이션 7.5년)으로 대체. 보유 ACE 종합채권은 중기채로 인정하되 신규 매수는 이 종목"}
-      # commodity: 이 전략에서는 비중 0 (금에 합침). 바스켓 ETF 상장 시 targets에 commodity를 되살리고 여기 종목 지정
+      stock:     {ticker: "360750", name: TIGER 미국S&P500, type: "미국 대형주 지수 (앱 예시 TIGER 360750 · ACE 360200, 보유 많은 TIGER)"}
+      mid_bond:  {ticker: "308620", name: KODEX 미국10년국채선물, type: "미국 중기채 — 선물형 (앱 표기 'KODEX 미국채10년선물', 현재 상장명 KODEX 미국10년국채선물. 앱 예시 KODEX 308620 · TIGER 305080). 보유 ACE 종합채권은 mid_bond로 계속 세고 추가 매수만 이 종목"}
+      long_bond: {ticker: "453850", name: ACE 미국30년국채액티브(H), type: "미국 장기채 — 환헤지 (앱 예시 ACE(H) 453850 · 'KODEX 미국채30년액티브(H) 438470'). 환노출 476760은 후보로 남김"}
+      gold:      {ticker: "411060", name: ACE KRX금현물, type: "금 현물 (앱 예시 ACE 411060 · KODEX 골드선물(H) 132030)"}
+      commodity: {ticker: "261220", name: KODEX WTI원유선물(H), type: "원자재 — 원유 선물형, 환헤지 (앱 예시 KODEX 261220 · TIGER 원유선물Enhanced(H) 130680). 단일 품목·선물형이라는 점은 §4-1에"}
   k_all_weather:
     name: K-올웨더 (김성일, 『마법의 연금굴리기』)
     threshold_pp: 5
