@@ -29,5 +29,5 @@
 
 ## 기술
 Python 3.12 + uv, Claude Agent SDK, pandas, PyYAML, pytest, Streamlit.
-실행: `uv run pytest` / 드라이런 `uv run python -m tools.cli --holdings <csv> --pool me_pension [--new-cash 3000000 --new-cash-account <id>] [--live]` / 화면 `uv run streamlit run app/main.py`(2주차).
+실행: `uv run pytest` / 등록 `uv run python -m tools.register --account <id> --images <png...> --out <csv>` / 드라이런 `uv run python -m tools.cli --holdings <csv> --pool me_pension [--new-cash 3000000 --new-cash-account <id>] [--live]` / 화면 `uv run streamlit run app/main.py`(2주차).
 tools/: strategy(load_strategy) · assets(tag_assets, 제약 검증, 계좌·풀) · market(종목코드·현재가) · rebalance(compute_rebalance 순수 함수) · explain(왜 지금 템플릿) · order_sheet · decisions · parse_balance(CSV·캡처) · cli. 자동주문(KIS API)은 PoC 2단계 — 지금은 드라이런만. 일정과 현재 범위는 `docs/AGENT_DESIGN.md` §2.
