@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 2026-10-27
+- docs/wiki/sources/pension-knowledge-sources.md 신설: 연금 출처 지도(공공기관 > 연구소 > 저자 > 유튜버). 2026 신간 차경수 『연금 이야기』, 미래에셋 김동엽 연재, KODEX 액션북, 시그널스노우볼 참고 앱
+
 ## 2026-10-26
 - wiki 박곰희: 사용자가 찍은 『박곰희 연금 부자 수업』 4장으로 비율(공격형=책 "박곰희 포트폴리오")·종목 7개·4개의 통장·월배당 포트 확정. YAML 후보 stock 70 / long_bond 20 / gold 5 / cash 5. YAML은 미변경
 - 컨셉 이미지 기준 화면·구조·보안 검토를 ARCHITECTURE_REVIEW.md에 기록. 기존 테스트 18 통과/15 fixture 부재 실패, 합성 입력으로 파싱·저장 경로·주문 후보 검증 문제 확인. React/TypeScript + Python/FastAPI 전환은 제안 단계.

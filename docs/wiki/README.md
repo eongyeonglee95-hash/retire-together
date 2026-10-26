@@ -20,3 +20,4 @@
 - `pension-account-rules.md` — IRP 70% 한도 현황, 연금저축·ISA 상품 범위, 2027 개정 예정 (2026-10-26 초안)
 - `broker-apis.md` — 미래에셋·KIS·키움 API의 연금계좌 지원 범위 (2026-10-26 초안)
 - `market-data-sources.md` — 네이버·공공데이터포털·KRX·pykrx 시세 소스 비교 (2026-10-26 초안)
+- `pension-knowledge-sources.md` — 연금저축·IRP·ISA 믿을 만한 출처: 공공기관·연구소·저자·유튜버, 2026년 위주, 쉽게 (2026-10-27 초안)
