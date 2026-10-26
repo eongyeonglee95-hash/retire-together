@@ -1,10 +1,17 @@
 # RetireTogether (둘이서은퇴)
 
-부부 연금·현금 주머니를 규칙대로 굴리는 은퇴 가계 노트. 첫 목표는 Pension Rebalancing Agent PoC.
+부부 연금·현금 주머니를 규칙대로 굴리는 은퇴 가계 노트. 현재 목표는 원래 컨셉에 가까운 제품 화면과 안전한 리밸런싱 흐름을 함께 완성하는 것.
+
+## 현재 작업 기준 — 2026-10-27 사용자 승인
+- 사용자가 Codex 검토 내용을 Claude의 기존 작업에 반영하고 충돌 없이 원래 컨셉대로 진행하도록 요청했다.
+- 시각 기준은 `docs/assets/concept.jpg`. 작업 순서·담당·완료 조건의 원본은 `docs/AGENT_DESIGN.md` §0. 상세 검토 근거는 `docs/ARCHITECTURE_REVIEW.md`.
+- 목표 스택: `web/` React·TypeScript·Vite + Python·FastAPI. 기존 `app/` Streamlit은 전환 중 비교 도구. 기존 계산 로직은 검증을 보강해 재사용한다.
+- 현재 진행 중인 투자 출처·저자 리서치는 유지한다. 전략 비율·종목·투자 규칙 결정과 UI/구조 전환은 별개다. 새 비율이나 종목을 이 전환의 일부로 임의 반영하지 않는다.
+- 동시 작업 전 §0의 담당 경로와 협업 메모를 확인한다. 기존 세션의 작업을 복제하거나 다른 작업자의 변경을 되돌리지 않는다. 준비/전달/수신 확인/구현 완료를 구분한다.
 
 ## 시작할 때 반드시 읽을 것
 1. `docs/MASTER_CONTEXT.md` — 단일 출발점. 제품 철학과 책임 분리 원칙
-2. `docs/AGENT_DESIGN.md` — 첫 Agent 정의와 PoC 범위(§2). 범위 밖 기능은 만들지 않는다
+2. `docs/AGENT_DESIGN.md` — 현재 실행 계획·협업(§0), Agent 정의(§1), 이전 PoC 기록(§2). 현재 범위는 §0이 우선한다
 3. 작업 영역에 따라 `docs/REBALANCING_RULES.md`, `docs/CALCULATION_RULES.md`, `docs/TAX_RULES.md`
 
 ## 지켜야 할 원칙
@@ -20,7 +27,8 @@
 
 ## 저장소 구조 (목표)
 - `docs/` 기획·규칙 문서. `docs/wiki/` 리서치 위키 — 쓰고 갱신하는 절차는 `/wiki-research` 스킬
-- `app/` Streamlit 화면 (홈·리밸런싱)
+- `web/` 목표 React 화면, `backend/` 목표 API·서비스·저장소 (현재 계획, 착수 여부는 AGENT_DESIGN §0)
+- `app/` 기존 Streamlit 화면 (전환 중 비교용)
 - `agent/` 메인 Agent와 프롬프트
 - `tools/` parse_balance / tag_assets / load_strategy / compute_rebalance / explain_inputs / build_order_sheet / record_decision
 - `rules/` 전략 YAML, 자산군↔종목 매핑 YAML, 계좌 목록 YAML(소유자·증권사·계좌종류)
@@ -28,6 +36,6 @@
 - `tests/` 계산 함수 단위 테스트
 
 ## 기술
-Python 3.12 + uv, Claude Agent SDK, pandas, PyYAML, pytest, Streamlit.
+현재 실행 코드: Python 3.12 + uv, Claude Agent SDK, pandas, PyYAML, pytest, Streamlit. 전환 목표: TypeScript·React·Vite + Python·FastAPI·Pydantic, 로컬 SQLite. 전환을 완료했다고 보고하지 않는다.
 실행: `uv run pytest` / 등록 `uv run python -m tools.register --account <id> --images <png...> --out <csv>` / 드라이런 `uv run python -m tools.cli --holdings <csv> --pool me_pension [--new-cash 3000000 --new-cash-account <id>] [--live]` / 화면 `scripts/dev.sh`(기존 서버 내리고 PYTHONPATH=. 로 띄움 — tools/ 변경도 자동 반영. `uv run streamlit run app/main.py`로 직접 띄우면 tools/를 고친 뒤 서버를 다시 띄워야 한다).
-tools/: strategy(load_strategy) · assets(tag_assets, 제약 검증, 계좌·풀) · market(종목코드·현재가) · rebalance(compute_rebalance 순수 함수) · explain(왜 지금 템플릿) · order_sheet · decisions · parse_balance(CSV·캡처) · cli. 자동주문(KIS API)은 PoC 2단계 — 지금은 드라이런만. 일정과 현재 범위는 `docs/AGENT_DESIGN.md` §2.
+tools/: strategy(load_strategy) · assets(tag_assets, 제약 검증, 계좌·풀) · market(종목코드·현재가) · rebalance(compute_rebalance 순수 함수) · explain(왜 지금 템플릿) · order_sheet · decisions · parse_balance(CSV·캡처) · cli. 자동주문(KIS API)은 후속 단계 — 지금은 드라이런만. 현재 범위와 순서는 `docs/AGENT_DESIGN.md` §0.

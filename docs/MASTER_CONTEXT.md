@@ -1,8 +1,15 @@
 # RetireTogether (둘이서은퇴) — MASTER CONTEXT
 
-최종 갱신: 2026-10-26
+최종 갱신: 2026-10-27
 역할: 이 프로젝트의 단일 출발점. 새 세션·새 Agent·새 사람은 이 문서부터 읽는다. 세부 규칙은 각 문서로 분리 관리 (아래 "문서 지도").
 문서 지도: SCREEN_REFERENCE.md(화면) · MASTER_PRD.md(요구사항) · AGENT_DESIGN.md(Agent·PoC 범위) · REBALANCING_RULES.md(자산배분 규칙) · TAX_RULES.md(세금·수령 규칙) · CALCULATION_RULES.md(공식) · DECISIONS.md(결정 기록) · CHANGELOG.md
+
+## 현재 작업 방향 — 2026-10-27 사용자 승인
+- 화면 기준은 저장소의 `docs/assets/concept.jpg`. 컨셉에 가까운 데스크톱·모바일 홈을 첫 검수 결과물로 삼는다.
+- React·TypeScript·Vite + Python·FastAPI로 전환하고 기존 계산 코드는 검증을 보강해 재사용한다. 현재 실행 가능한 UI는 아직 Streamlit이다.
+- 단일 실행 계획·담당·인계 상태는 `AGENT_DESIGN.md` §0. 상세 조사 근거는 `ARCHITECTURE_REVIEW.md`. 이전 PoC 일정과 충돌하면 현재 실행 계획이 우선한다.
+- Claude가 진행 중인 출처·저자 리서치와 확정된 투자 결정을 유지한다. Codex는 공유 설계·검토를 반영하며 동일 파일 동시 수정을 피한다.
+- 제품 진행을 디자인 검수/실데이터 연결/동작/검증으로 구분한다. 기존 체크리스트 단순 집계는 전체 제품 완성률로 사용하지 않는다.
 
 ## 제품 철학
 "입력은 캡처 한 장, 판단은 두 분의 규칙, 제안은 에이전트가, 결정은 기록으로."
@@ -71,8 +78,8 @@
 
 ## 개발 방향
 - 목적: 사용자 본인이 Claude로 개발하며 AI Agent 역량 강화
-- UI는 "화면 = 질문 하나" 수준까지만 기획(SCREEN_REFERENCE.md). 로직(순수 함수)부터 만들되, 1~2주 뒤 아이디에이션 회의를 위해 Streamlit 메인 화면(홈)+리밸런싱 화면을 먼저 올린다 (AGENT_DESIGN §2 일정). FastAPI는 화면·백엔드를 분리할 때 후보
-- 스택: Claude Code + uv(Python 3.12) + Claude Agent SDK(Python) + Streamlit + MCP(KIS API 래퍼 등). 필요 시 LangGraph. LLM 실행 엔진은 Claude, 개발 중 GPT는 브레인스토밍 보조. Task Master를 쓸 경우 PRD 입력은 AGENT_DESIGN §2(PoC 1페이지)만
+- UI는 컨셉의 정보 계층·사진·카드·차트·모바일 구성을 명세하고 SCREEN_REFERENCE 기준으로 검수한다. 기반 오류를 보강한 뒤 고정 데모로 홈을 먼저 보여주고, 안전한 실데이터 연결과 핵심 흐름을 완성한다 (AGENT_DESIGN §0).
+- 목표 스택: React·TypeScript·Vite, Python 3.12·uv·FastAPI·Pydantic, 로컬 SQLite. 기존 Streamlit은 비교 도구. LLM 실행 엔진은 Claude를 유지하며 도구/파일 접근 경계를 검증한다. 외부 태스크 관리 도구 도입은 보류하고 AGENT_DESIGN §0의 작업표를 공유한다.
 - 첫 Agent: Pension Rebalancing Agent (AGENT_DESIGN.md의 PoC 1페이지)
 
 ## 미결
@@ -83,4 +90,4 @@
 - 서비스명 확정 (둘이서은퇴 / RetireTogether)
 
 ## 산출물
-- 기획서·설명서는 PDF 선호. 컨셉 원본 이미지는 프로젝트에 바이너리 저장 불가 → PDF 제작 시 재첨부
+- 기획서·설명서는 PDF 선호. 컨셉 원본은 `docs/assets/concept.jpg`에 존재하며 현재 화면 검수의 기준이다.
