@@ -340,10 +340,14 @@ def _asset_sheet(accounts: dict, root) -> None:
         "주머니": holdings["account_id"].map(lambda a: "노후" if accounts.get(a, {}).get("pocket") == "pension" else "현금"),
         "종목명": holdings["ticker_name"], "종목코드": holdings["ticker"],
         "자산군": holdings["asset_class"].map(lambda c: CLASS_LABELS.get(c, c or "미분류")),
-        "수량": holdings["qty"], "현재가": holdings["price"], "평가금액": holdings["qty"] * holdings["price"],
+        "수량": holdings["qty"], "현재가": holdings["price"],
+        "매입단가": (holdings["buy_value"] / holdings["qty"]).round(0) if "buy_value" in holdings else None,
+        "평가금액": holdings["qty"] * holdings["price"],
         "매입금액": holdings.get("buy_value", pd.Series([None] * len(holdings))),
     })
-    sheet["손익"] = sheet["평가금액"] - sheet["매입금액"] if sheet["매입금액"].notna().all() else None
+    has_buy = sheet["매입금액"].notna().all()
+    sheet["손익"] = sheet["평가금액"] - sheet["매입금액"] if has_buy else None
+    sheet["수익률%"] = ((sheet["평가금액"] / sheet["매입금액"] - 1) * 100).round(2) if has_buy else None
     total = int(sheet["평가금액"].sum())
     c1, c2, c3 = st.columns(3)
     c1.metric("총 평가금액", f"{total:,}원")
@@ -353,7 +357,7 @@ def _asset_sheet(accounts: dict, root) -> None:
     palette = ["#f4f6fb", "#fff7ee", "#f1f8f2", "#f8f1fa"]  # 계좌마다 다른 옅은 배경
     acct_color = {a: palette[i % len(palette)] for i, a in enumerate(sheet["계좌"].unique())}
     styled = sheet.style.apply(lambda row: [f"background-color: {acct_color[row['계좌']]}"] * len(row), axis=1) \
-        .format({"평가금액": "{:,.0f}", "매입금액": "{:,.0f}", "현재가": "{:,.0f}", "손익": "{:+,.0f}", "수량": "{:,.0f}"}, na_rep="—")
+        .format({"평가금액": "{:,.0f}", "매입금액": "{:,.0f}", "현재가": "{:,.0f}", "매입단가": "{:,.0f}", "손익": "{:+,.0f}", "수익률%": "{:+.2f}", "수량": "{:,.0f}"}, na_rep="—")
     st.dataframe(styled, hide_index=True, use_container_width=True)
     st.markdown("**자산군별 합계**")
     by_cls = sheet.groupby("자산군")["평가금액"].sum().sort_values(ascending=False)
