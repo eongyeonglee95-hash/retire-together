@@ -237,7 +237,9 @@ def input_page(view: str) -> None:
     accounts = load_accounts()
     st.caption("변하지 않는 것(종목·수량·매입금액)은 캡처 한 번으로 등록. 현재가는 리밸런싱 화면에서 공개 시세로 갱신.")
 
-    tab1, tab2 = st.tabs(["📷 캡처 등록 (처음·수량 변경 때)", "📄 CSV 올리기"])
+    tab0, tab1, tab2 = st.tabs(["📊 내 자산 한눈에 (시트)", "📷 캡처 등록 (처음·수량 변경 때)", "📄 CSV 올리기"])
+    with tab0:
+        _asset_sheet(accounts, root)
     with tab1:
         acct = st.selectbox("계좌", list(accounts), format_func=lambda k: accounts[k].get("label", k))
         images = st.file_uploader("증권사 앱 잔고 화면 캡처 (여러 장 가능, 같은 계좌)", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
@@ -288,3 +290,66 @@ def input_page(view: str) -> None:
                 st.success("저장: " + ", ".join(str(o.relative_to(root)) for o in outs))
     st.divider()
     st.caption("구글시트 연동·증권사 API 조회·대화형 입력은 v1.5 이후 (MASTER_PRD §4).")
+
+
+def _asset_sheet(accounts: dict, root) -> None:
+    """모든 계좌의 보유 내역을 시트 한 장으로. 어느 파일에서 왔는지, 평가금액, 자산군, 합계, 다운로드."""
+    import io
+
+    import pandas as pd
+
+    from tools.assets import load_pools, tag_holdings
+    from tools.store import load_holdings, snapshot_history
+    from tools.strategy import CLASS_LABELS
+
+    ids = list(accounts)
+    holdings, sources = load_holdings(ids)
+    st.markdown("**데이터 출처 (계좌별 최신 파일)**")
+    src_rows = [{"계좌": accounts[a].get("label", a), "출처": src,
+                 "등록 이력": ", ".join(p.stem for p in snapshot_history(a)) or "—"} for a, src in sources.items()]
+    st.dataframe(pd.DataFrame(src_rows), hide_index=True, use_container_width=True)
+    if holdings.empty:
+        st.info("등록된 보유 내역이 없어요. 옆 탭에서 캡처를 등록하세요.")
+        return
+
+    live = st.toggle("현재가를 공개 시세로 갱신", value=False, key="sheet_live")
+    if live:
+        from tools.market import fetch_prices
+        try:
+            prices = fetch_prices(list(holdings["ticker"].dropna().unique()))
+            holdings["price"] = holdings["ticker"].map(prices).fillna(holdings["price"]).astype(int)
+        except Exception as e:
+            st.caption(f"현재가 조회 실패({e}) → 등록 때 가격")
+    holdings, unmapped = tag_holdings(holdings)
+    pools = load_pools()
+    acct_pool = {a: pid for pid, pv in pools.items() for a in pv["accounts"]}
+    sheet = pd.DataFrame({
+        "소유자": holdings["account_id"].map(lambda a: OWNERS.get(accounts.get(a, {}).get("owner"), "")),
+        "계좌": holdings["account_id"].map(lambda a: accounts.get(a, {}).get("label", a)),
+        "풀": holdings["account_id"].map(lambda a: pools.get(acct_pool.get(a), {}).get("label", acct_pool.get(a, ""))),
+        "주머니": holdings["account_id"].map(lambda a: "노후" if accounts.get(a, {}).get("pocket") == "pension" else "현금"),
+        "종목명": holdings["ticker_name"], "종목코드": holdings["ticker"],
+        "자산군": holdings["asset_class"].map(lambda c: CLASS_LABELS.get(c, c or "미분류")),
+        "수량": holdings["qty"], "현재가": holdings["price"], "평가금액": holdings["qty"] * holdings["price"],
+        "매입금액": holdings.get("buy_value", pd.Series([None] * len(holdings))),
+    })
+    sheet["손익"] = sheet["평가금액"] - sheet["매입금액"] if sheet["매입금액"].notna().all() else None
+    total = int(sheet["평가금액"].sum())
+    c1, c2, c3 = st.columns(3)
+    c1.metric("총 평가금액", f"{total:,}원")
+    c2.metric("계좌 수", f"{holdings['account_id'].nunique()}개")
+    c3.metric("종목 수", f"{len(sheet)}개")
+    st.dataframe(sheet, hide_index=True, use_container_width=True,
+                 column_config={"평가금액": st.column_config.NumberColumn(format="%d"), "매입금액": st.column_config.NumberColumn(format="%d"),
+                                "현재가": st.column_config.NumberColumn(format="%d"), "손익": st.column_config.NumberColumn(format="%d")})
+    st.markdown("**자산군별 합계**")
+    by_cls = sheet.groupby("자산군")["평가금액"].sum().sort_values(ascending=False)
+    st.dataframe(pd.DataFrame({"자산군": by_cls.index, "평가금액": by_cls.values, "비중": (by_cls.values / total * 100).round(1)}),
+                 hide_index=True, use_container_width=True)
+    if unmapped:
+        st.warning("자산군 미분류: " + ", ".join(unmapped))
+    buf = io.BytesIO(); sheet.to_excel(buf, index=False)
+    d1, d2 = st.columns(2)
+    d1.download_button("엑셀로 받기", buf.getvalue(), file_name="my_assets.xlsx")
+    d2.download_button("CSV로 받기", sheet.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig"), file_name="my_assets.csv")
+    st.caption("구글시트 연동(템플릿 복사·자동 읽기)은 v1.5. 지금은 이 시트를 받아 구글시트에 붙여 넣으면 같은 모양입니다.")

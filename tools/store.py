@@ -29,6 +29,19 @@ def save_holdings(account_id: str, df: pd.DataFrame, on: dt.date | None = None) 
     return out
 
 
+def _rel(p: Path) -> str:
+    try:
+        return str(p.relative_to(ROOT))
+    except ValueError:
+        return str(p)
+
+
+def snapshot_history(account_id: str) -> list[Path]:
+    """그 계좌의 스냅샷 파일 전부 (오래된 순). 같은 날 다시 등록하면 그날 파일을 덮어쓴다."""
+    d = SNAPSHOTS / account_id
+    return sorted(d.glob("*.csv")) if d.exists() else []
+
+
 def latest_snapshot(account_id: str) -> Path | None:
     d = SNAPSHOTS / account_id
     files = sorted(d.glob("*.csv")) if d.exists() else []
@@ -51,7 +64,7 @@ def load_holdings(account_ids: list[str]) -> tuple[pd.DataFrame, dict[str, str]]
     for acct in account_ids:
         p = latest_snapshot(acct)
         if p is not None:
-            frames.append(_read(p)); sources[acct] = str(p.relative_to(ROOT))
+            frames.append(_read(p)); sources[acct] = _rel(p)
             continue
         rows = _sample_rows(acct)
         if rows is not None:
