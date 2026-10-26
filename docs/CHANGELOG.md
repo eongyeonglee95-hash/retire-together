@@ -1,7 +1,7 @@
 # CHANGELOG
 
 ## 2026-10-27
-- AGENT_DESIGN §0: DATA/FLOW/RETIRE/SHARE 보류로 변경(사용자: 지금은 홈 목업 화면까지). DECISIONS 기록
+- AGENT_DESIGN §0: DATA/FLOW/RETIRE/SHARE를 보류했다가 사용자 번복으로 대기(계속 진행)로 복원. DECISIONS에 두 결정 모두 기록
 - (코드) compute_rebalance: 전략이 cash 종목을 지정하면 cash도 매수(매도 없음). REBALANCING §1-2 한 줄, asset_map에 TIGER 미국달러SOFR 태깅, 테스트 1개
 - strategies.yaml park_gomhee 국내주식 종목 KODEX 200(069500)으로. wiki 박곰희 열린 질문 9 해결
 - strategies.yaml all_weather: 시그널스노우볼 해외 올웨더 템플릿으로 교체(30/15/40/8/7, 종목 5개). REBALANCING §4-1 사유 다시 씀(26일 결정 3건 뒤집음). DECISIONS 기록
