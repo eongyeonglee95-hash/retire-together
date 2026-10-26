@@ -19,7 +19,7 @@
 - 전략 비율·종목 매핑 숫자는 `rules/*.yaml`이 원천. 문서에 숫자를 복사하지 않는다
 
 ## 저장소 구조 (목표)
-- `docs/` 기획·규칙 문서 (이 폴더가 llm-wiki)
+- `docs/` 기획·규칙 문서. `docs/wiki/` 리서치 위키 — 쓰고 갱신하는 절차는 `/wiki-research` 스킬
 - `app/` Streamlit 화면 (홈·리밸런싱)
 - `agent/` 메인 Agent와 프롬프트
 - `tools/` parse_balance / tag_assets / load_strategy / compute_rebalance / explain_inputs / build_order_sheet / record_decision

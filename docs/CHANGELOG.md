@@ -7,5 +7,6 @@
 - 자동매매(KIS API 연금계좌 조사 결과), 레거시 처리, 현금 주머니 구조 반영
 - (Claude Code 세션) 확정 대기 기본값 확정, 수령 기간을 층별 종료 나이로 변경, 계좌 현황(미래에셋·키움·한투) 추가, 아이디에이션 회의(1~2주 뒤) 기준으로 PoC 일정을 "계산 함수 → Streamlit 홈 → 리밸런싱 화면 → Agent"로 조정, 전략 비율 원천을 rules/strategies.yaml로 통일, Agent 도구·컨텍스트 제한 명시, 워크플로우 0단계 계좌 선택(rules/accounts.yaml) 추가, 리밸런싱 HTML 목업(docs/assets/mockup-rebalancing.html) 반영 및 compute_rebalance 출력 데이터 계약 추가, 미래에셋 연금저축 (구)+(신) 합산 규칙과 캡처 입력 경로 반영, data/ 전체 git 제외, 입력 구조를 "보유 내역 1회 등록 + 현재가 공개 시세 조회"로 확정(fetch_prices tool 추가)
 - (코드) 1주차 전반 완료: tools/ 9개 모듈, 테스트 15개 통과, 실제 잔고로 드라이런 주문표 생성. 리밸런싱 풀(pool)과 모드(리밸런싱/매수만)를 accounts.yaml에 추가, 첫 로그인 때 합산/따로를 고르는 "계좌 묶기" 화면을 SCREEN_REFERENCE에 추가
+- docs/wiki/ 리서치 위키 폴더와 `/wiki-research` 프로젝트 스킬(새 주제·주기 갱신 절차) 추가
 - (코드) Streamlit 메인 화면(홈·연금 샘플·메뉴) 1주차 후반 완료. 체크리스트에 '데이터 리서치 / llm-wiki' 트랙 분리
 - (코드) 캡처 파싱(Claude 비전, Agent SDK) 실행: 캡처 6장 → 두 계좌 모두 화면 합계와 오차 0. 완료 기준 2 통과
