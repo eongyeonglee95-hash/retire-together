@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## 2026-10-26
+- docs/wiki/ 리서치 초안 10장: 투자 룰(달리오·김성일·박곰희·책 원칙), 상품(보유 9종목 근거·장기채/원자재 후보), 출처(세법 조문 대조·연금계좌 제도·증권사 API·시세 소스). YAML·RULES는 변경 없음, 수정 제안은 각 페이지에
+- AGENT_DESIGN: 리서치 트랙 체크, 사용자 결정 5개 추가. MASTER_CONTEXT: 미래에셋 Open API 존재 주장 정정
+- `/wiki-research update`를 Sonnet 전용 에이전트 `wiki-updater`(.claude/agents/)로 실행하도록 변경. 새 주제 조사는 세션 모델 유지
 - docs/ 구조로 재편: MASTER_CONTEXT, SCREEN_REFERENCE, MASTER_PRD, AGENT_DESIGN, REBALANCING_RULES, TAX_RULES, CALCULATION_RULES, DECISIONS, CHANGELOG 생성
 - TAX_RULES: 퇴직금 연금수령 과세 비율을 2단계(30/40% 감면)에서 3단계(실제수령연차 10년 이하 70% / 20년 이하 60% / 20년 초과 50% 과세)로 수정. "55세 즉시 개시" 하드코딩 금지 → 시나리오 비교. 1,500만원은 절벽이 아닌 기준선으로 표현 수정
 - AGENT_DESIGN: Pension Rebalancing Agent 정의 고정, 내부 역할 표, 첫 PoC 1페이지(범위·제외·완료 기준·기술·일정)

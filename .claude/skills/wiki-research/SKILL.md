@@ -42,6 +42,7 @@ disable-model-invocation: true
 
 ## 재확인: `/wiki-research update [페이지]`
 
+0. 이 절차는 `wiki-updater` 에이전트(`.claude/agents/wiki-updater.md`, Sonnet)에 맡긴다. 페이지가 여러 개면 페이지마다 하나씩 병렬로 띄우고, 결과 보고를 모아 사용자에게 전한다. 새 주제(위 절차)는 세션 모델로 직접 한다.
 1. 대상 페이지(지정 없으면 `docs/wiki/` 전체 + `docs/TAX_RULES.md`)의 출처를 다시 연다.
 2. 바뀐 것만 고치고, 페이지 "변경 이력"과 `docs/CHANGELOG.md`에 날짜와 함께 적는다. 바뀐 게 없으면 기준일만 올리고 "변경 없음"을 적는다.
 3. `rules/*.yaml`에 이미 들어간 값이 바뀌었으면 YAML을 고치지 말고 사용자에게 알린다 (결정은 사용자).

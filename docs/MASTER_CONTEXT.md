@@ -77,7 +77,7 @@
 
 ## 미결
 - 개인 도구 vs 서비스 (현재는 개인 도구로 시작)
-- 미래에셋 Open API가 연금저축 잔고 조회를 지원하는지(2026-10-26 검색으로 확인 못 함. 트레이딩 Open API 자체는 존재). 지원하면 캡처 대신 API 조회
+- 미래에셋 Open API가 연금저축 잔고 조회를 지원하는지(2026-10-26 재조사: 개인 고객용 Open API는 공식 페이지에서 찾지 못함. 기관용 FIX/DMA 주문만 확인 → `docs/wiki/sources/broker-apis.md`). 지원하면 캡처 대신 API 조회
 - IRP 증권사 확인, ISA API 지원 여부, 2027년 한투 계좌 개설 후 KIS 연금계좌 주문 수용 여부
 - (확정됨) 계산 기본 가정 → CALCULATION_RULES.md §4
 - 서비스명 확정 (둘이서은퇴 / RetireTogether)
