@@ -32,6 +32,12 @@ def load_asset_map(path: Path = ASSET_MAP_PATH) -> dict[str, dict]:
     return data.get("assets") or {}
 
 
+def load_class_defaults(path: Path = ASSET_MAP_PATH) -> dict[str, dict]:
+    """자산군 → 기본 종목 {ticker, name, status, alternatives}. 보유 없는 자산군을 살 때 쓴다."""
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return data.get("class_defaults") or {}
+
+
 def load_accounts(path: Path = ACCOUNTS_PATH) -> dict[str, dict]:
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     return {a["id"]: a for a in data.get("accounts", [])}
@@ -89,3 +95,19 @@ def check_constraints(holdings: pd.DataFrame, accounts: dict[str, dict] | None =
 
     # IRP 위험자산 70% 한도 — IRP 계좌가 활성화되면 검증 (회의 후). 지금은 항목만 둔다
     return results
+
+
+def defaults_with_prices(holdings: pd.DataFrame, live: bool = True) -> dict[str, dict]:
+    """class_defaults에 현재가를 붙인다. 보유 중인 종목이면 보유 가격, 아니면 공개 시세(live) 조회. 실패하면 price 없음."""
+    out = {}
+    held = {str(t): int(p) for t, p in zip(holdings.get("ticker", []), holdings.get("price", []))}
+    for cls, d in load_class_defaults().items():
+        entry = {"ticker": d.get("ticker"), "name": d.get("name"), "price": held.get(str(d.get("ticker")))}
+        if entry["price"] is None and live and d.get("ticker"):
+            try:
+                from tools.market import fetch_price
+                entry["price"] = fetch_price(d["ticker"])
+            except Exception:
+                entry["price"] = None
+        out[cls] = entry
+    return out

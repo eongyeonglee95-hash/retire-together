@@ -73,8 +73,11 @@ def compute_rebalance(
     new_cash: NewCash | None = None,
     accounts: dict[str, dict] | None = None,
     mode: str = "rebalance",
+    defaults: dict[str, dict] | None = None,
 ) -> RebalanceResult:
-    """mode: "rebalance" = 매도·매수 / "buy_only" = 매도 없이 납입금·예수금으로 부족한 자산군만 매수."""
+    """mode: "rebalance" = 매도·매수 / "buy_only" = 매도 없이 납입금·예수금으로 부족한 자산군만 매수.
+    defaults: 자산군 → {"ticker", "name", "price"} 보유 없는 자산군을 살 때 쓰는 기본 종목 (price 없으면 금액만 표시)."""
+    defaults = defaults or {}
     if mode not in ("rebalance", "buy_only"):
         raise ValueError(f"알 수 없는 mode: {mode}")
     cash_by_account = dict(cash_by_account or {})
@@ -184,9 +187,23 @@ def compute_rebalance(
             amt = spend * short[cls] / total_short
             rows = h[(h["asset_class"] == cls) & (h["account_id"] == acct)].sort_values("value", ascending=False)
             if len(rows) == 0:
-                # 이 계좌에 해당 자산군 종목이 없음 → 종목은 사용자가 정한다
-                orders.append(Order("매수", cls, acct, None, None, None, int(amt),
-                                    "이 계좌에 해당 자산군 종목 없음 — 종목 지정 필요 (asset_map.yaml)"))
+                d = defaults.get(cls)
+                if d and d.get("price"):
+                    # 기본 종목(asset_map.yaml class_defaults)으로 수량 계산
+                    qty = int(math.floor(amt / d["price"]))
+                    amt_i = qty * int(d["price"])
+                    if amt_i < strategy.min_trade_krw or qty <= 0:
+                        orders.append(Order("생략", cls, acct, d.get("name"), d.get("ticker"), None, int(amt), "최소 거래 금액 미만"))
+                        continue
+                    orders.append(Order("매수", cls, acct, d.get("name"), d.get("ticker"), qty, amt_i,
+                                        "기본 종목 (asset_map.yaml class_defaults, 변경 가능)"))
+                    short[cls] -= amt_i
+                    acct_cash[acct] -= amt_i
+                    have[cls] += amt_i
+                    continue
+                # 기본 종목도 없음 → 금액만 표시, 종목은 사용자가 정한다
+                orders.append(Order("매수", cls, acct, (d or {}).get("name"), (d or {}).get("ticker"), None, int(amt),
+                                    "종목 지정 필요 (asset_map.yaml class_defaults)" if not d else "현재가 없음 — --live 또는 가격 입력 필요"))
                 short[cls] -= amt
                 acct_cash[acct] -= amt
                 continue

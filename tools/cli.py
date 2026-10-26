@@ -10,7 +10,7 @@ import argparse
 import sys
 
 from tools import explain, order_sheet
-from tools.assets import load_accounts, load_pools, tag_holdings
+from tools.assets import defaults_with_prices, load_accounts, load_pools, tag_holdings
 from tools.decisions import read_decisions
 from tools.parse_balance import load_holdings_csv
 from tools.rebalance import NewCash, compute_rebalance
@@ -56,7 +56,8 @@ def main(argv: list[str] | None = None) -> int:
         new_cash = NewCash(args.new_cash, acct)
     accounts = load_accounts()
     labels = {k: v.get("label", k) for k, v in accounts.items()}
-    r = compute_rebalance(holdings, strategy, new_cash=new_cash, accounts=accounts, mode=mode)
+    defaults = defaults_with_prices(holdings, live=True)
+    r = compute_rebalance(holdings, strategy, new_cash=new_cash, accounts=accounts, mode=mode, defaults=defaults)
 
     print(f"\n전략: {r.strategy_name} · 임계치 ±{r.threshold*100:.0f}%p · 최소 거래 {r.min_trade_krw:,}원")
     print(f"총 평가액 {r.total_value:,}원" + (f" + 납입 {r.new_cash:,}원 = {r.total_after_cash:,}원" if r.new_cash else ""))
