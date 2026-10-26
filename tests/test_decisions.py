@@ -22,3 +22,17 @@ def test_save_accounts_roundtrip(tmp_path):
     assert load_accounts_list(p) == accounts
     got = load_pools(p)
     assert got["p1"]["mode"] == "buy_only" and got["p1"]["accounts"] == ["a1"]
+
+
+def test_store_latest_per_account(tmp_path, monkeypatch):
+    import datetime as dt
+    import pandas as pd
+    from tools import store
+    monkeypatch.setattr(store, "SNAPSHOTS", tmp_path / "snap")
+    monkeypatch.setattr(store, "SAMPLES", tmp_path / "samples")
+    a = pd.DataFrame({"account_id": ["a"], "ticker_name": ["X"], "ticker": ["1"], "qty": [1], "price": [100]})
+    store.save_holdings("a", a, on=dt.date(2026, 1, 1))
+    a2 = a.assign(qty=[5])
+    store.save_holdings("a", a2, on=dt.date(2026, 2, 1))
+    df, src = store.load_holdings(["a", "b"])
+    assert df["qty"].tolist() == [5] and src["b"] == "없음"

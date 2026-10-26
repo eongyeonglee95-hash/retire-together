@@ -86,15 +86,16 @@ def rebalancing(view: str) -> None:
                         format_func=lambda m: "리밸런싱 (매도·매수)" if m == "rebalance" else "매수만 (납입금으로)", horizontal=True)
     new_cash_amt = top[3].number_input("신규 납입 (원)", min_value=0, step=100_000, value=0)
 
-    uploaded = st.file_uploader("보유 내역 CSV (비우면 data/samples의 최근 파일)", type=["csv"])
-    path = uploaded if uploaded is not None else _default_holdings_path()
-    if path is None:
-        st.warning("보유 내역이 없어요. 입력 메뉴에서 캡처를 등록하거나 CSV를 올려 주세요.")
-        return
-    holdings = load_holdings_csv(path)
-    holdings = holdings[holdings["account_id"].isin(pool["accounts"])].reset_index(drop=True)
+    from tools.store import load_holdings
+    uploaded = st.file_uploader("보유 내역 CSV (비우면 입력 화면에서 등록한 계좌별 최신 파일)", type=["csv"])
+    if uploaded is not None:
+        holdings = load_holdings_csv(uploaded)
+        holdings = holdings[holdings["account_id"].isin(pool["accounts"])].reset_index(drop=True)
+    else:
+        holdings, sources = load_holdings(pool["accounts"])
+        st.caption("데이터: " + " · ".join(f"{labels.get(a, a)} ← {src}" for a, src in sources.items()))
     if holdings.empty:
-        st.warning("이 풀의 계좌에 해당하는 보유 내역이 없어요.")
+        st.warning("이 풀의 계좌에 보유 내역이 없어요. 입력 메뉴에서 캡처를 등록해 주세요.")
         return
     if st.toggle("현재가를 공개 시세로 갱신", value=False):
         from tools.market import fetch_prices
@@ -267,25 +268,23 @@ def input_page(view: str) -> None:
             for name, cands in meta.get("unresolved", []):
                 st.info(f"종목코드 미확정: {name} → 후보 {cands}. ticker 칸에 직접 넣어 주세요.")
             edited = st.data_editor(st.session_state["parsed"], num_rows="dynamic", use_container_width=True, key="parsed_editor")
-            if st.button("저장 (보유 내역으로 등록)"):
-                out = root / "data" / "snapshots" / f"holdings_{dt.date.today().isoformat()}.csv"
-                out.parent.mkdir(parents=True, exist_ok=True)
-                if out.exists():  # 같은 날 다른 계좌를 이어서 등록하면 합친다
-                    prev = pd.read_csv(out, encoding="utf-8-sig", dtype={"ticker": str})
-                    prev = prev[prev["account_id"] != acct]
-                    edited = pd.concat([prev, edited], ignore_index=True)
-                edited.to_csv(out, index=False, encoding="utf-8-sig")
-                st.success(f"저장: {out.relative_to(root)} — 리밸런싱 화면이 이 파일을 씁니다.")
+            ok_to_save = True
+            if not meta.get("reconciled"):
+                st.caption("합계가 안 맞는 흔한 이유: 캡처를 한 장만 올려서 화면 아래쪽 종목이 빠짐 → 그 계좌의 캡처를 전부 올려 다시 변환하세요.")
+                ok_to_save = st.checkbox("차이를 확인했고 이대로 저장할게요")
+            if st.button("저장 (이 계좌의 보유 내역으로 등록)", disabled=not ok_to_save):
+                from tools.store import save_holdings
+                out = save_holdings(acct, edited)
+                st.success(f"저장: {out.relative_to(root)} — 리밸런싱 화면이 계좌별 최신 파일을 합쳐 씁니다.")
                 del st.session_state["parsed"]
     with tab2:
         f = st.file_uploader("보유 내역 CSV (열: account_id, ticker_name, ticker, qty, price …)", type=["csv"], key="csv_up")
         if f is not None:
             df = pd.read_csv(f, encoding="utf-8-sig", dtype={"ticker": str})
             st.dataframe(df, hide_index=True, use_container_width=True)
-            if st.button("이 CSV를 보유 내역으로 저장"):
-                out = root / "data" / "snapshots" / f"holdings_{dt.date.today().isoformat()}.csv"
-                out.parent.mkdir(parents=True, exist_ok=True)
-                df.to_csv(out, index=False, encoding="utf-8-sig")
-                st.success(f"저장: {out.relative_to(root)}")
+            if st.button("이 CSV를 보유 내역으로 저장 (계좌별로 나눠 저장)"):
+                from tools.store import save_holdings
+                outs = [save_holdings(a, df) for a in df["account_id"].unique()]
+                st.success("저장: " + ", ".join(str(o.relative_to(root)) for o in outs))
     st.divider()
     st.caption("구글시트 연동·증권사 API 조회·대화형 입력은 v1.5 이후 (MASTER_PRD §4).")

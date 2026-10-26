@@ -69,6 +69,10 @@ def main(argv: list[str] | None = None) -> int:
     out = Path(args.out)
     xlsx = save(pd.concat(frames, ignore_index=True), out)
     print(f"저장: {out}\n저장: {xlsx}")
+    from tools.store import save_holdings
+    for df in frames:
+        for a in df["account_id"].unique():
+            print(f"스냅샷: {save_holdings(a, df)}")
     return 0
 
 

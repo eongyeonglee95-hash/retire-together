@@ -12,6 +12,7 @@
   8. decisions.record_decision / read_decisions   수락·거절·사유 기록, 다음 제안에 반영
   9. (2단계) 자동주문 — 없음, 드라이런만
 
+  store.save_holdings / load_holdings   계좌별 스냅샷 파일 저장·최신 합치기
   register.main   캡처 → 파싱 → 종목코드 → CSV·엑셀 (처음 등록)
   cli.main   위 순서를 한 줄 명령으로 (전략 → 비율 → 주문표 → 설명)
 """
