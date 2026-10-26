@@ -131,16 +131,18 @@ def rebalancing(view: str) -> None:
     labels = {k: v.get("label", k) for k, v in accounts.items()}
 
     # ---- 머리글: 풀 · 전략 · 납입 · 데이터 ----
-    top = st.columns([2, 2, 2, 2])
+    from tools.strategy import has_targets
+    top = st.columns([2, 2, 2])
     pool_id = top[0].selectbox("풀 (합산 단위)", list(pools), format_func=lambda k: pools[k].get("label", k))
     pool = pools[pool_id]
+    mode = top[1].radio("모드", ["rebalance", "buy_only"], index=0 if pool.get("mode", "rebalance") == "rebalance" else 1,
+                        format_func=lambda m: "리밸런싱 (매도·매수)" if m == "rebalance" else "매수만 (납입금으로)", horizontal=True)
+    new_cash_amt = top[2].number_input("신규 납입 (원)", min_value=0, step=100_000, value=0)
     strategies = list_strategies()
     strat_ids = [k for k, _ in strategies]
     default_idx = strat_ids.index(pool.get("strategy")) if pool.get("strategy") in strat_ids else 0
-    strategy_id = top[1].selectbox("전략", strat_ids, index=default_idx, format_func=lambda k: dict(strategies)[k])
-    mode = top[2].radio("모드", ["rebalance", "buy_only"], index=0 if pool.get("mode", "rebalance") == "rebalance" else 1,
-                        format_func=lambda m: "리밸런싱 (매도·매수)" if m == "rebalance" else "매수만 (납입금으로)", horizontal=True)
-    new_cash_amt = top[3].number_input("신규 납입 (원)", min_value=0, step=100_000, value=0)
+    strat_label = {k: n + ("" if has_targets(k) else "  (비율 미입력)") for k, n in strategies}
+    strategy_id = st.radio("전략 (자산배분 룰)", strat_ids, index=default_idx, format_func=lambda k: strat_label[k], horizontal=True)
     full_align = st.toggle("완전 리밸런싱 — 임계치 무시하고 모든 자산군을 목표 비율로 (처음 전환할 때)", value=False) if mode == "rebalance" else False
 
     from tools.store import load_holdings
