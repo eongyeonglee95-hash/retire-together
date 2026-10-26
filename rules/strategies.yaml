@@ -28,11 +28,25 @@ strategies:
     targets: {}              # 리서치 대기 — docs/wiki/strategies/ 에서 출처와 함께 채움. 화면 '비율 편집'으로 임시 입력 가능
     source: null
   park_gomhee:
-    name: 박곰희 기본형
-    threshold_pp: 5
+    name: 박곰희 포트폴리오 (『박곰희 연금 부자 수업』 2025)
+    threshold_pp: 5          # 저자 규칙 아님(저자는 연 1회 생일 기준). 우리는 ±5%p 밴드만 쓴다 (2026-10-26 결정)
     min_trade_krw: 100000
-    targets: {}              # 리서치 대기
-    source: null
+    # 2026-10-27 사용자 지시로 책 비율·종목을 넣음. 저자 7자산을 우리 키 6개로 접었다 — 접으면서 사라진 구분은 labels·주석에.
+    # 원본: 국내주식 30 / 해외주식 25 / 채권 20 / 배당주 10 / 리츠 5 / 금 5 / 달러 5 (책 자산배분 모델 절 + 종목 표 2025-01-25, wiki/strategies/parkgomhee.md)
+    targets:
+      stock: 70              # 국내주식 30 + 해외주식 25 + 배당주 10 + 리츠 5
+      long_bond: 20          # 채권 20 = 국고채 30년
+      gold: 5
+      cash: 5                # 달러 5. 주의: 엔진은 cash 목표를 예수금으로 보고 매수하지 않는다 → 달러 ETF 매수는 엔진 보완 전까지 수동 (열린 항목)
+    source: "『박곰희 연금 부자 수업』(인플루엔셜 2025) Part 3 '4. 박곰희 포트폴리오' + 종목 표(2025-01-25 기준). 사용자 촬영 2026-10-26"
+    labels:
+      stock: "주식 (국내·해외·배당·리츠)"
+      cash: "달러"
+    instruments:             # 책 종목. 종목코드는 2026-10-26 네이버 종목 검색으로 확인
+      stock:     {ticker: "269540", name: PLUS 미국S&P500(H), type: "책 해외주식 종목(환헤지). 국내주식은 책이 공모펀드(VIP 한국형가치투자A-e)라 종목코드 없음 → 미반영. 배당주 SOL 미국배당다우존스(H) 452360, 리츠 KODEX 한국부동산리츠인프라 476800은 asset_map에서 stock으로 매핑"}
+      long_bond: {ticker: "439870", name: KODEX 국고채30년액티브, type: "국내 국고채 30년"}
+      gold:      {ticker: "411060", name: ACE KRX금현물, type: "KRX 금현물"}
+      cash:      {ticker: "456610", name: TIGER 미국달러SOFR금리액티브(합성), type: "달러 단기금리(SOFR) 합성 — 엔진이 cash를 매수하지 않으므로 현재는 표시용"}
   custom:
     name: 직접 설정
     threshold_pp: 5

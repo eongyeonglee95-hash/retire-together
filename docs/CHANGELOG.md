@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## 2026-10-27
+- DECISIONS: 전략 카드 "예) 종목 + 면책 문구" 표시 방식 채택(시그널스노우볼 참고). 구현은 UI 트랙
+- strategies.yaml park_gomhee: 책 비율(stock 70 / long_bond 20 / gold 5 / cash 5)·종목 4개·labels 반영. 이름 "박곰희 포트폴리오"로
+- 사용자 승인으로 concept.jpg 기준 React/TypeScript/Vite + Python/FastAPI 전환·입력/보안 보강·컨셉 홈 우선 검수를 현재 계획으로 반영. CLAUDE/AGENTS, MASTER_CONTEXT/PRD, SCREEN_REFERENCE, AGENT_DESIGN §0을 정렬하고 이전 PoC 체크리스트를 이력으로 구분. Claude 리서치 보존·담당 경로·수신 확인 절차 명시. 구현 착수/수락은 별도 상태로 관리.
 - wiki pension-knowledge-sources: 시그널스노우볼 앱 템플릿 6개(글로벌·국내 6:4, 해외·국내 올웨더, 단일 2) 캡처 기록. 국내 올웨더 금 15가 우리 선택과 같음, 면책 문구 참고, 종목 코드는 출처로 안 씀
 - docs/wiki/sources/pension-knowledge-sources.md 신설: 연금 출처 지도(공공기관 > 연구소 > 저자 > 유튜버). 2026 신간 차경수 『연금 이야기』, 미래에셋 김동엽 연재, KODEX 액션북, 시그널스노우볼 참고 앱
 
