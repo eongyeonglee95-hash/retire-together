@@ -111,3 +111,22 @@ def defaults_with_prices(holdings: pd.DataFrame, live: bool = True) -> dict[str,
                 entry["price"] = None
         out[cls] = entry
     return out
+
+
+ACCOUNTS_HEADER = """# 계좌 목록 — 워크플로우 0단계 (docs/AGENT_DESIGN.md §1). 설정 화면에서 저장하면 이 파일이 다시 쓰인다.
+# owner: me | spouse · broker: mirae | kiwoom | kis · account_type: pension_savings | irp | isa | general
+# pocket: pension | cash · layer: 1 국민연금 2 퇴직연금 3 개인연금 4 ISA (현금 주머니는 null)
+# pool: 리밸런싱 단위. 같은 pool = 합산, 계좌 하나만 = 계좌별. pools: 풀마다 strategy(전략)와 mode(rebalance | buy_only)
+"""
+
+
+def save_accounts(accounts: list[dict], pools: dict[str, dict], path: Path = ACCOUNTS_PATH) -> None:
+    """설정 화면에서 바꾼 계좌·풀을 accounts.yaml에 쓴다. pools의 accounts 목록은 계좌의 pool 값에서 파생되므로 저장하지 않는다."""
+    clean_pools = {k: {kk: vv for kk, vv in v.items() if kk != "accounts"} for k, v in pools.items()}
+    body = yaml.safe_dump({"accounts": accounts, "pools": clean_pools}, allow_unicode=True, sort_keys=False)
+    path.write_text(ACCOUNTS_HEADER + body, encoding="utf-8")
+
+
+def load_accounts_list(path: Path = ACCOUNTS_PATH) -> list[dict]:
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return list(data.get("accounts", []))

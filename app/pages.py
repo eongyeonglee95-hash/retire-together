@@ -56,8 +56,9 @@ def _default_holdings_path():
     """data/samples 아래 가장 최근 *_parsed_*.csv 또는 balance_*.csv (git 제외 폴더)."""
     from pathlib import Path
     root = Path(__file__).resolve().parents[1]
-    cands = sorted(root.glob("data/samples/**/holdings_parsed_*.csv")) + sorted(root.glob("data/samples/**/balance_*.csv"))
-    return cands[-1] if cands else None
+    cands = (sorted(root.glob("data/snapshots/holdings_*.csv")) + sorted(root.glob("data/samples/**/holdings_parsed_*.csv"))
+             + sorted(root.glob("data/samples/**/balance_*.csv")))
+    return max(cands, key=lambda c: c.stat().st_mtime) if cands else None
 
 
 def rebalancing(view: str) -> None:
@@ -166,3 +167,125 @@ def rebalancing(view: str) -> None:
 
 def coming_soon(name: str) -> None:
     st.info(f"**{name}** 화면은 준비 중이에요. 기획은 docs/SCREEN_REFERENCE.md를 보세요.")
+
+
+OWNERS = {"me": "나", "spouse": "배우자"}
+BROKERS = {"mirae": "미래에셋", "kiwoom": "키움", "kis": "한국투자"}
+TYPES = {"pension_savings": "연금저축", "irp": "IRP", "isa": "ISA", "general": "일반"}
+MODES = {"rebalance": "리밸런싱 (매도·매수)", "buy_only": "매수만 (납입금으로)"}
+
+
+def settings(view: str) -> None:
+    """계좌 묶기 — 이 계좌들, 같이 볼까 따로 볼까? (처음 로그인·설정)"""
+    from tools.assets import load_accounts_list, load_pools, save_accounts
+    from tools.strategy import list_strategies
+
+    st.caption("합산할 계좌는 같은 풀에, 따로 갈 계좌는 각자 풀. 풀마다 전략과 모드를 고릅니다. 저장하면 rules/accounts.yaml에 쓰입니다.")
+    accounts = load_accounts_list()
+    pools = load_pools()
+    strategies = dict(list_strategies())
+
+    st.subheader("1. 풀 — 리밸런싱 단위")
+    new_pool = st.text_input("새 풀 만들기 (id, 영문)", placeholder="예: spouse_pension")
+    if new_pool and new_pool not in pools:
+        pools[new_pool] = {"label": new_pool, "strategy": "all_weather", "mode": "buy_only", "accounts": []}
+    pool_rows = []
+    for pid, pv in pools.items():
+        c = st.columns([2, 3, 3, 3])
+        c[0].markdown(f"**{pid}**")
+        label = c[1].text_input("이름", pv.get("label", pid), key=f"pl_{pid}")
+        strat = c[2].selectbox("전략", list(strategies), index=list(strategies).index(pv.get("strategy")) if pv.get("strategy") in strategies else 0,
+                               format_func=lambda k: strategies[k], key=f"ps_{pid}")
+        mode = c[3].selectbox("모드", list(MODES), index=0 if pv.get("mode", "rebalance") == "rebalance" else 1,
+                              format_func=lambda k: MODES[k], key=f"pm_{pid}")
+        pool_rows.append((pid, {"label": label, "strategy": strat, "mode": mode}))
+
+    st.subheader("2. 계좌 — 어느 풀에 넣을까")
+    pool_ids = [pid for pid, _ in pool_rows]
+    acct_rows = []
+    for a in accounts:
+        c = st.columns([3, 2, 2, 2, 3, 1])
+        c[0].markdown(f"**{a.get('label', a['id'])}**  \n<span style='color:#888'>{a['id']}</span>", unsafe_allow_html=True)
+        c[1].write(OWNERS.get(a.get("owner"), a.get("owner")))
+        c[2].write(BROKERS.get(a.get("broker"), a.get("broker")))
+        c[3].write(TYPES.get(a.get("account_type"), a.get("account_type")))
+        cur = a.get("pool") if a.get("pool") in pool_ids else pool_ids[0]
+        pool = c[4].selectbox("풀", pool_ids, index=pool_ids.index(cur), key=f"ap_{a['id']}")
+        active = c[5].checkbox("사용", value=bool(a.get("active", False)), key=f"aa_{a['id']}")
+        acct_rows.append(dict(a, pool=pool, active=active))
+
+    if st.button("저장", type="primary"):
+        save_accounts(acct_rows, dict(pool_rows))
+        st.success("저장했어요. 리밸런싱 화면에서 풀을 다시 고르면 반영됩니다.")
+        st.rerun()
+
+    st.divider()
+    st.caption("가족 초대코드·편집 권한·증권사 API 키·자동매매 한도는 v1.5 이후 (docs/SCREEN_REFERENCE.md 설정).")
+
+
+def input_page(view: str) -> None:
+    """입력 — 숫자 넣기 가장 쉬운 곳. 캡처 붙여넣기가 가장 큰 버튼."""
+    import datetime as dt
+    from pathlib import Path
+
+    import pandas as pd
+
+    from tools.assets import load_accounts
+
+    root = Path(__file__).resolve().parents[1]
+    accounts = load_accounts()
+    st.caption("변하지 않는 것(종목·수량·매입금액)은 캡처 한 번으로 등록. 현재가는 리밸런싱 화면에서 공개 시세로 갱신.")
+
+    tab1, tab2 = st.tabs(["📷 캡처 등록 (처음·수량 변경 때)", "📄 CSV 올리기"])
+    with tab1:
+        acct = st.selectbox("계좌", list(accounts), format_func=lambda k: accounts[k].get("label", k))
+        images = st.file_uploader("증권사 앱 잔고 화면 캡처 (여러 장 가능, 같은 계좌)", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
+        if images and st.button("표로 변환", type="primary"):
+            from tools.register import register
+            day = dt.date.today().isoformat()
+            up_dir = root / "data" / "uploads" / acct / day
+            up_dir.mkdir(parents=True, exist_ok=True)
+            paths = []
+            for i, f in enumerate(images):
+                dst = up_dir / f"{i+1:03d}_{f.name}"
+                dst.write_bytes(f.getbuffer())
+                paths.append(dst)
+            with st.spinner("캡처를 읽는 중 (Claude 비전, 10~20초)…"):
+                try:
+                    df, meta = register(acct, paths, accounts[acct].get("label"))
+                except Exception as e:
+                    st.error(f"캡처 파싱 실패: {e}")
+                    return
+            st.session_state["parsed"] = df
+            st.session_state["parsed_meta"] = meta
+        if "parsed" in st.session_state:
+            meta = st.session_state["parsed_meta"]
+            if meta.get("reconciled"):
+                st.success(f"화면 합계 {meta['screen_total_value']:,}원과 일치해요. 표를 확인하고 저장하세요.")
+            else:
+                st.warning(f"화면 합계와 {meta.get('diff', 0):+,}원 차이가 있어요. 틀린 칸을 고친 뒤 저장하세요.")
+            for name, cands in meta.get("unresolved", []):
+                st.info(f"종목코드 미확정: {name} → 후보 {cands}. ticker 칸에 직접 넣어 주세요.")
+            edited = st.data_editor(st.session_state["parsed"], num_rows="dynamic", use_container_width=True, key="parsed_editor")
+            if st.button("저장 (보유 내역으로 등록)"):
+                out = root / "data" / "snapshots" / f"holdings_{dt.date.today().isoformat()}.csv"
+                out.parent.mkdir(parents=True, exist_ok=True)
+                if out.exists():  # 같은 날 다른 계좌를 이어서 등록하면 합친다
+                    prev = pd.read_csv(out, encoding="utf-8-sig", dtype={"ticker": str})
+                    prev = prev[prev["account_id"] != acct]
+                    edited = pd.concat([prev, edited], ignore_index=True)
+                edited.to_csv(out, index=False, encoding="utf-8-sig")
+                st.success(f"저장: {out.relative_to(root)} — 리밸런싱 화면이 이 파일을 씁니다.")
+                del st.session_state["parsed"]
+    with tab2:
+        f = st.file_uploader("보유 내역 CSV (열: account_id, ticker_name, ticker, qty, price …)", type=["csv"], key="csv_up")
+        if f is not None:
+            df = pd.read_csv(f, encoding="utf-8-sig", dtype={"ticker": str})
+            st.dataframe(df, hide_index=True, use_container_width=True)
+            if st.button("이 CSV를 보유 내역으로 저장"):
+                out = root / "data" / "snapshots" / f"holdings_{dt.date.today().isoformat()}.csv"
+                out.parent.mkdir(parents=True, exist_ok=True)
+                df.to_csv(out, index=False, encoding="utf-8-sig")
+                st.success(f"저장: {out.relative_to(root)}")
+    st.divider()
+    st.caption("구글시트 연동·증권사 API 조회·대화형 입력은 v1.5 이후 (MASTER_PRD §4).")

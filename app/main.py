@@ -46,5 +46,9 @@ elif choice == "연금":
     pages.pension(view)
 elif choice == "리밸런싱":
     pages.rebalancing(view)
+elif choice == "입력":
+    pages.input_page(view)
+elif choice == "설정":
+    pages.settings(view)
 else:
     pages.coming_soon(choice)
