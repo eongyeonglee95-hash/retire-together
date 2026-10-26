@@ -192,6 +192,29 @@ def rebalancing(view: str) -> None:
         st.warning("이 전략은 비율이 비어 있어요. 위 '비율 편집'에서 채우거나 다른 전략을 고르세요.")
         return
     new_cash = NewCash(int(new_cash_amt), pool["accounts"][0]) if new_cash_amt else None
+    with st.expander("자산군 기본 종목 고르기 — 보유가 없는 자산군을 살 때 쓰는 종목 (후보 중 선택, 바꿀 수 있음)"):
+        import yaml as _yaml
+        from tools.assets import ASSET_MAP_PATH, load_class_defaults, save_asset_map
+        cd = load_class_defaults()
+        picks, changed = {}, False
+        for cls, d in cd.items():
+            options = [(d.get("ticker"), d.get("name"))] + [(a["ticker"], a["name"]) for a in d.get("alternatives", []) if a["ticker"] != d.get("ticker")]
+            labels_ = [f"{n} ({t})" for t, n in options]
+            idx = st.selectbox(CLASS_LABELS.get(cls, cls), range(len(options)), format_func=lambda i, L=labels_: L[i], key=f"cd_{cls}")
+            picks[cls] = options[idx]
+            if options[idx][0] != d.get("ticker"):
+                changed = True
+        st.caption("기준: 계좌 적격 → 역할(만기·통화) 일치 → 실물형 우선 → 보수·거래량 → 쓰던 운용사. 비교표는 docs/wiki/products/ (리서치 중). 도구는 고르지 않습니다, 본인이 고릅니다.")
+        if st.button("기본 종목 저장", disabled=not changed):
+            for cls, (t, n) in picks.items():
+                d = cd[cls]
+                alts = [a for a in d.get("alternatives", []) if a["ticker"] != t]
+                if d.get("ticker") != t:
+                    alts.insert(0, {"ticker": d.get("ticker"), "name": d.get("name")})
+                cd[cls] = dict(d, ticker=t, name=n, status="confirmed", alternatives=alts)
+            data = _yaml.safe_load(ASSET_MAP_PATH.read_text(encoding="utf-8"))
+            save_asset_map(data.get("assets") or {}, cd)
+            st.success("저장했어요 (rules/asset_map.yaml class_defaults)."); st.rerun()
     defaults = defaults_with_prices(holdings, live=True)
     r = compute_rebalance(holdings, strategy, new_cash=new_cash, accounts=accounts, mode=mode, defaults=defaults, full_align=full_align)
     last = read_decisions()
