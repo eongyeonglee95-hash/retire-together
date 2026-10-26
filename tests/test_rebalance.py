@@ -119,3 +119,20 @@ def test_buy_only_mode_never_sells():
 def test_buy_only_without_cash_does_nothing():
     r = compute_rebalance(holdings(), strat(), accounts=ACCOUNTS, mode="buy_only")
     assert r.orders == [] and any("매수만 모드" in n for n in r.notes)
+
+
+def test_satellite_sold_first_and_never_bought():
+    h = holdings()
+    # 테스트계좌A의 S&P500을 위성(테마)으로, 나머지 핵심
+    h["role"] = ["satellite", "core", "core", "core", "core"]
+    r = compute_rebalance(h, strat(), accounts=ACCOUNTS)
+    sells_a = [o for o in r.orders if o.side == "매도" and o.account_id == "acct_a" and o.asset_class == "stock"]
+    assert sells_a and "위성" in sells_a[0].note
+    assert all(not (o.side == "매수" and o.ticker_name == "TIGER 미국S&P500") for o in r.orders)
+
+
+def test_full_align_trades_classes_inside_threshold():
+    r1 = compute_rebalance(holdings(), strat(), accounts=ACCOUNTS)
+    r2 = compute_rebalance(holdings(), strat(), accounts=ACCOUNTS, full_align=True)
+    assert all(c["over_threshold"] for c in r2.classes if c["asset_class"] != "cash")
+    assert not any(c["asset_class"] == "mid_bond" and c["over_threshold"] for c in r1.classes)

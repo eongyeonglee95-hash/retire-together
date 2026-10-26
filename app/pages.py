@@ -85,6 +85,7 @@ def rebalancing(view: str) -> None:
     mode = top[2].radio("모드", ["rebalance", "buy_only"], index=0 if pool.get("mode", "rebalance") == "rebalance" else 1,
                         format_func=lambda m: "리밸런싱 (매도·매수)" if m == "rebalance" else "매수만 (납입금으로)", horizontal=True)
     new_cash_amt = top[3].number_input("신규 납입 (원)", min_value=0, step=100_000, value=0)
+    full_align = st.toggle("완전 리밸런싱 — 임계치 무시하고 모든 자산군을 목표 비율로 (처음 전환할 때)", value=False) if mode == "rebalance" else False
 
     from tools.store import load_holdings
     uploaded = st.file_uploader("보유 내역 CSV (비우면 입력 화면에서 등록한 계좌별 최신 파일)", type=["csv"])
@@ -116,7 +117,7 @@ def rebalancing(view: str) -> None:
         return
     new_cash = NewCash(int(new_cash_amt), pool["accounts"][0]) if new_cash_amt else None
     defaults = defaults_with_prices(holdings, live=True)
-    r = compute_rebalance(holdings, strategy, new_cash=new_cash, accounts=accounts, mode=mode, defaults=defaults)
+    r = compute_rebalance(holdings, strategy, new_cash=new_cash, accounts=accounts, mode=mode, defaults=defaults, full_align=full_align)
     last = read_decisions()
 
     # ---- 경고 배너 + 왜 지금 + 총 평가액 ----

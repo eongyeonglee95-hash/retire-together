@@ -24,6 +24,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--strategy", default=None, help="전략 id (풀 설정보다 우선)")
     ap.add_argument("--new-cash", type=int, default=0, help="신규 납입 금액(원)")
     ap.add_argument("--new-cash-account", default=None, help="납입이 들어가는 계좌 id")
+    ap.add_argument("--full", action="store_true", help="완전 리밸런싱: 임계치 무시, 모든 자산군을 목표로")
     ap.add_argument("--live", action="store_true", help="현재가를 공개 시세로 갱신 (기본: CSV의 스냅샷 가격)")
     args = ap.parse_args(argv)
 
@@ -57,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
     accounts = load_accounts()
     labels = {k: v.get("label", k) for k, v in accounts.items()}
     defaults = defaults_with_prices(holdings, live=True)
-    r = compute_rebalance(holdings, strategy, new_cash=new_cash, accounts=accounts, mode=mode, defaults=defaults)
+    r = compute_rebalance(holdings, strategy, new_cash=new_cash, accounts=accounts, mode=mode, defaults=defaults, full_align=args.full)
 
     print(f"\n전략: {r.strategy_name} · 임계치 ±{r.threshold*100:.0f}%p · 최소 거래 {r.min_trade_krw:,}원")
     print(f"총 평가액 {r.total_value:,}원" + (f" + 납입 {r.new_cash:,}원 = {r.total_after_cash:,}원" if r.new_cash else ""))

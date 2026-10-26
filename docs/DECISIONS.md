@@ -29,6 +29,8 @@
 - 2026-10-26 | Claude 가정(사용자 확인 필요) | asset_map.yaml 종목 9개 분류: 주식 6, 금 2, 중기채 1(ACE 종합채권) — status: proposed | 확인 후 confirmed로
 - 2026-10-26 | 사용자 | 종목 지정은 규칙을 조사해 기본값을 두고 사용자가 바꿀 수 있게 | REBALANCING §1-2, asset_map.yaml class_defaults
 - 2026-10-26 | Claude 가정(사용자 확인 필요) | 기본 종목: 장기채 KODEX 국고채30년액티브, 중기채 ACE 종합채권(AA-이상)액티브, 원자재 TIGER 구리실물, 금 ACE KRX금현물, 주식 TIGER 미국S&P500. 후보는 asset_map.yaml | 적격 여부·보수 비교는 위키 products/에서
+- 2026-10-26 | 사용자 | 완전 리밸런싱 계좌는 테마 종목까지 정리해 전략대로, 모으기 계좌는 계속 매수만 | 종목 역할 core/satellite: 매도는 위성 먼저, 매수는 핵심만. 완전 리밸런싱(임계치 무시) 옵션 추가
+- 2026-10-26 | Claude 가정(사용자 확인 필요) | 위성(satellite) = 인도타타그룹, KODEX·TIGER 차이나휴머노이드로봇. 나머지는 핵심 | asset_map.yaml role
 - 2026-10-26 | Claude 결정(구현 세부) | Task Master를 쓸 경우 PRD 입력은 AGENT_DESIGN §2만 | MASTER_PRD 전체를 넣으면 v2 태스크까지 생김
 
 ## 규칙·가정 결정

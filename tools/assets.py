@@ -62,15 +62,16 @@ def tag_holdings(holdings: pd.DataFrame, asset_map: dict[str, dict] | None = Non
     amap = load_asset_map() if asset_map is None else asset_map
     by_ticker = {v.get("ticker"): v for v in amap.values() if v.get("ticker")}
     out = holdings.copy()
-    classes, unmapped = [], []
+    classes, roles, unmapped = [], [], []
     for _, row in out.iterrows():
         entry = amap.get(row["ticker_name"]) or by_ticker.get(str(row.get("ticker", "")))
         if entry is None:
-            classes.append(None)
+            classes.append(None); roles.append("core")
             unmapped.append(row["ticker_name"])
         else:
-            classes.append(entry["asset_class"])
+            classes.append(entry["asset_class"]); roles.append(entry.get("role", "core"))
     out["asset_class"] = classes
+    out["role"] = roles
     return out, sorted(set(unmapped))
 
 

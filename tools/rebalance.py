@@ -74,10 +74,13 @@ def compute_rebalance(
     accounts: dict[str, dict] | None = None,
     mode: str = "rebalance",
     defaults: dict[str, dict] | None = None,
+    full_align: bool = False,
 ) -> RebalanceResult:
     """mode: "rebalance" = 매도·매수 / "buy_only" = 매도 없이 납입금·예수금으로 부족한 자산군만 매수.
     defaults: 자산군 → {"ticker", "name", "price"} 보유 없는 자산군을 살 때 쓰는 기본 종목 (price 없으면 금액만 표시)."""
     defaults = defaults or {}
+    if full_align:  # 완전 리밸런싱: 임계치 무시, 모든 자산군을 목표로
+        strategy = Strategy(**{**strategy.__dict__, "threshold": 0.0})
     if mode not in ("rebalance", "buy_only"):
         raise ValueError(f"알 수 없는 mode: {mode}")
     cash_by_account = dict(cash_by_account or {})
@@ -159,18 +162,33 @@ def compute_rebalance(
         excess = have[cls] - goal[cls]
         if excess <= 0:
             continue
-        rows = h[h["asset_class"] == cls].sort_values("value", ascending=False)
-        cls_total = int(rows["value"].sum())
-        for _, r in rows.iterrows():
-            amt = excess * r["value"] / cls_total
+        rows = h[h["asset_class"] == cls]
+        if "role" not in rows:
+            rows = rows.assign(role="core")
+        # 위성(테마) 종목을 먼저 전량까지 순차 매도, 남은 초과분은 핵심 종목에서 비례 매도
+        sat = rows[rows["role"] == "satellite"].sort_values("value", ascending=False)
+        core = rows[rows["role"] != "satellite"].sort_values("value", ascending=False)
+        plan = []  # (row, amount)
+        remaining = excess
+        for _, r in sat.iterrows():
+            take = min(remaining, int(r["value"]))
+            if take > 0:
+                plan.append((r, take)); remaining -= take
+        core_total = int(core["value"].sum())
+        for _, r in core.iterrows():
+            if remaining > 0 and core_total > 0:
+                plan.append((r, remaining * r["value"] / core_total))
+        for r, amt in plan:
             qty = int(math.floor(amt / r["price"]))
             amt_i = qty * int(r["price"])
             if amt_i < strategy.min_trade_krw or qty <= 0:
                 orders.append(Order("생략", cls, r["account_id"], r["ticker_name"], r.get("ticker"), None, int(amt),
                                     "최소 거래 금액 미만"))
                 continue
-            orders.append(Order("매도", cls, r["account_id"], r["ticker_name"], r.get("ticker"), qty, amt_i,
-                                f"편차 {[c for c in classes if c['asset_class']==cls][0]['deviation_pp']:+.1f}%p"))
+            note = f"편차 {[c for c in classes if c['asset_class']==cls][0]['deviation_pp']:+.1f}%p"
+            if r.get("role") == "satellite":
+                note += " · 위성(테마) 먼저 매도"
+            orders.append(Order("매도", cls, r["account_id"], r["ticker_name"], r.get("ticker"), qty, amt_i, note))
             acct_cash[r["account_id"]] = acct_cash.get(r["account_id"], 0) + amt_i
             have[cls] -= amt_i
 
@@ -185,7 +203,10 @@ def compute_rebalance(
             if short[cls] <= 0:
                 continue
             amt = spend * short[cls] / total_short
-            rows = h[(h["asset_class"] == cls) & (h["account_id"] == acct)].sort_values("value", ascending=False)
+            rows = h[(h["asset_class"] == cls) & (h["account_id"] == acct)]
+            if "role" in rows:
+                rows = rows[rows["role"] != "satellite"]  # 매수는 핵심 종목으로만
+            rows = rows.sort_values("value", ascending=False)
             if len(rows) == 0:
                 d = defaults.get(cls)
                 if d and d.get("price"):
