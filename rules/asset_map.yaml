@@ -52,6 +52,11 @@ assets:
     asset_class: gold
     role: core
     status: confirmed    # 2026-10-26 사용자 확인
+  "TIGER 미국달러SOFR금리액티브(합성)":   # 박곰희 포트 '달러' 자리 (2026-10-27). cash로 태깅해야 보유분이 달러 목표에 잡힌다
+    ticker: "456610"
+    asset_class: cash
+    role: core
+    status: confirmed
 
 # 자산군 기본 종목 — 그 자산군을 보유하지 않은 계좌에서 매수할 때 쓰는 종목 (2026-10-26 Claude 제안, 사용자 변경 가능)
 # 선택 규칙은 docs/REBALANCING_RULES.md §1-2. 후보(alternatives)는 공개 시세 검색으로 확인한 실제 상장 종목.

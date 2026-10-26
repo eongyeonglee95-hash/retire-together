@@ -40,7 +40,7 @@ strategies:
       stock: 70              # 국내주식 30 + 해외주식 25 + 배당주 10 + 리츠 5
       long_bond: 20          # 채권 20 = 국고채 30년
       gold: 5
-      cash: 5                # 달러 5. 주의: 엔진은 cash 목표를 예수금으로 보고 매수하지 않는다 → 달러 ETF 매수는 엔진 보완 전까지 수동 (열린 항목)
+      cash: 5                # 달러 5. 아래 instruments.cash 종목을 엔진이 매수한다 (2026-10-27 보완, REBALANCING §1-2). 보유 달러 ETF는 cash로 태깅해야 센다 (asset_map)
     source: "『박곰희 연금 부자 수업』(인플루엔셜 2025) Part 3 '4. 박곰희 포트폴리오' + 종목 표(2025-01-25 기준). 사용자 촬영 2026-10-26"
     labels:
       stock: "주식 (국내·해외·배당·리츠)"
@@ -49,7 +49,7 @@ strategies:
       stock:     {ticker: "069500", name: KODEX 200, type: "국내주식 30 자리. 책은 공모펀드(VIP 한국형가치투자A-e)였으나 2026-10-27 사용자: KODEX 200으로 대체. 주식 70 안의 나머지 — 해외 25 PLUS 미국S&P500(H) 269540, 배당 10 SOL 미국배당다우존스(H) 452360, 리츠 5 KODEX 한국부동산리츠인프라 476800 — 은 자산군 키가 stock 하나라 엔진이 따로 못 산다(열린 항목: 하위 키 분리). 보유 중인 것은 각자 stock으로 세어진다"}
       long_bond: {ticker: "439870", name: KODEX 국고채30년액티브, type: "국내 국고채 30년"}
       gold:      {ticker: "411060", name: ACE KRX금현물, type: "KRX 금현물"}
-      cash:      {ticker: "456610", name: TIGER 미국달러SOFR금리액티브(합성), type: "달러 단기금리(SOFR) 합성 — 엔진이 cash를 매수하지 않으므로 현재는 표시용"}
+      cash:      {ticker: "456610", name: TIGER 미국달러SOFR금리액티브(합성), type: "달러 단기금리(SOFR) 합성 — cash 지정 종목은 매수만, 매도 없음"}
   custom:
     name: 직접 설정
     threshold_pp: 5

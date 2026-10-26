@@ -199,3 +199,16 @@ def test_strategy_labels_show_in_classes_and_order_sheet():
     assert "금 (=원자재)" in classes_table(r)["자산군"].tolist()
     gold_orders = orders_table(r)[orders_table(r)["구분"] != "생략"]
     assert all(v != "금" for v in gold_orders["자산군"])  # 전략 라벨이 CLASS_LABELS를 덮는다
+
+
+def test_cash_instrument_is_bought_only_when_strategy_names_it():
+    """전략이 cash에 종목(달러 ETF)을 지정하면 cash도 매수한다. 지정이 없으면 cash는 예수금으로만 보고 사지 않는다 (§1-2)."""
+    t = {"stock": 0.65, "mid_bond": 0.1, "gold": 0.2, "cash": 0.05}
+    usd = {"cash": {"ticker": "456610", "name": "TIGER 미국달러SOFR금리액티브(합성)", "price": 8_735, "source": "strategy"}}
+    r = compute_rebalance(holdings(), strat(targets=t), new_cash=NewCash(3_000_000, "acct_a"), accounts=ACCOUNTS, mode="buy_only", defaults=usd)
+    cash_buys = [o for o in r.orders if o.asset_class == "cash" and o.side == "매수"]
+    assert cash_buys and cash_buys[0].ticker == "456610" and cash_buys[0].qty and cash_buys[0].qty > 0
+    assert cash_buys[0].amount <= 0.05 * (39_050_000 + 3_000_000) + 8_735  # 목표 5% 안
+    assert all(o.side != "매도" for o in r.orders)
+    r2 = compute_rebalance(holdings(), strat(targets=t), new_cash=NewCash(3_000_000, "acct_a"), accounts=ACCOUNTS, mode="buy_only")
+    assert not [o for o in r2.orders if o.asset_class == "cash"]

@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## 2026-10-27
+- (코드) compute_rebalance: 전략이 cash 종목을 지정하면 cash도 매수(매도 없음). REBALANCING §1-2 한 줄, asset_map에 TIGER 미국달러SOFR 태깅, 테스트 1개
 - strategies.yaml park_gomhee 국내주식 종목 KODEX 200(069500)으로. wiki 박곰희 열린 질문 9 해결
 - strategies.yaml all_weather: 시그널스노우볼 해외 올웨더 템플릿으로 교체(30/15/40/8/7, 종목 5개). REBALANCING §4-1 사유 다시 씀(26일 결정 3건 뒤집음). DECISIONS 기록
 - DECISIONS: 전략 카드 "예) 종목 + 면책 문구" 표시 방식 채택(시그널스노우볼 참고). 구현은 UI 트랙

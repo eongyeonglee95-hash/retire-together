@@ -153,7 +153,10 @@ def compute_rebalance(
     if new_cash:
         acct_cash[new_cash.account_id] = acct_cash.get(new_cash.account_id, 0) + C
 
-    targets = {c["asset_class"]: c["target"] for c in classes if c["asset_class"] != "cash"}
+    # cash 자산군은 전략이 종목(예: 달러 단기금리 ETF)을 지정한 경우에만 매수 대상 (REBALANCING §1-2, 2026-10-27).
+    # 보유는 cash로 태깅된 ETF만 센다 — 예수금은 사는 데 쓰는 돈이라 보유로 안 본다. 매도는 cash를 건드리지 않는다
+    cash_buyable = bool(defaults.get("cash") and defaults["cash"].get("source") == "strategy" and defaults["cash"].get("price"))
+    targets = {c["asset_class"]: c["target"] for c in classes if c["asset_class"] != "cash" or cash_buyable}
     goal = {cls: t * T2 for cls, t in targets.items()}              # G_i
     have = {cls: class_vals.get(cls, 0) for cls in targets}
     over = {c["asset_class"] for c in classes if c["over_threshold"] and c["asset_class"] != "cash"}
