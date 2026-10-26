@@ -10,3 +10,6 @@ data/*
 .DS_Store
 .streamlit/secrets.toml
 .taskmaster/
+
+# AI 도구 세션 상태 (oh-my-claudecode 등) — 환경 파일, 저장소에 올리지 않는다
+.omc/
