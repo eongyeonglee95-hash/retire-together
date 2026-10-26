@@ -312,7 +312,14 @@ def _asset_sheet(accounts: dict, root) -> None:
         st.info("등록된 보유 내역이 없어요. 옆 탭에서 캡처를 등록하세요.")
         return
 
-    live = st.toggle("현재가를 공개 시세로 갱신", value=False, key="sheet_live")
+    f1, f2 = st.columns([3, 1])
+    chosen = f1.multiselect("계좌 (비우면 전체)", ids, format_func=lambda a: accounts[a].get("label", a), key="sheet_accts")
+    if chosen:
+        holdings = holdings[holdings["account_id"].isin(chosen)].reset_index(drop=True)
+        if holdings.empty:
+            st.info("선택한 계좌에 등록된 보유 내역이 없어요.")
+            return
+    live = f2.toggle("현재가 갱신", value=False, key="sheet_live", help="공개 시세(네이버 금융)로 지금 가격을 받아 화면에서만 반영")
     if live:
         from tools.market import fetch_prices
         try:
