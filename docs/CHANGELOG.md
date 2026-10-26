@@ -1,6 +1,8 @@
 # CHANGELOG
 
 ## 2026-10-26
+- wiki 박곰희: 사용자가 찍은 『박곰희 연금 부자 수업』 4장으로 비율(공격형=책 "박곰희 포트폴리오")·종목 7개·4개의 통장·월배당 포트 확정. YAML 후보 stock 70 / long_bond 20 / gold 5 / cash 5. YAML은 미변경
+- 컨셉 이미지 기준 화면·구조·보안 검토를 ARCHITECTURE_REVIEW.md에 기록. 기존 테스트 18 통과/15 fixture 부재 실패, 합성 입력으로 파싱·저장 경로·주문 후보 검증 문제 확인. React/TypeScript + Python/FastAPI 전환은 제안 단계.
 - wiki/strategies/kim-sungil-k-all-weather: 저자 본인 칼럼(교보 뉴스룸 4편 2026-10-12)으로 보강 — 국채 30년 장기채·현금성 예시 ETF(초단기채·CD/머니마켓)·월 1회 리밸런싱(밴드 없음) 확인. 2022·2023 보도(17.5/15)와 다른 구성(B: 4개 지역 주식 50·국채 30·금 20·현금 0~40)을 별도 YAML 후보로 추가. 책 본문 비율은 미확인 유지. YAML·RULES 변경 없음
 - wiki/strategies/parkgomhee: 보강 시도 — 공격형 해외주식 25(합 100) 기사 2건으로 재확인, 임계치 없음 재확인. ETF 종목 유형·계좌별 구성은 미확인 유지(영상 페이지 자막 미노출, 책 확인 필요). YAML·RULES 변경 없음
 - TAX_RULES: 위키 조문 대조 6건 반영(종신형 3.3%, 50% 구간 시기, 의료 인출 제외, 수령연차 기산점, ISA 주석, 출처 교체). REBALANCING §3 연금저축·IRP 근거 구체화, §4 설명 재료 4줄 추가(Vanguard·Bernstein·김성일). §2 밴드만 확정
