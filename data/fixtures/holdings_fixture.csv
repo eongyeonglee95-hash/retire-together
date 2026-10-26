@@ -1,0 +1,6 @@
+account_id,ticker_name,ticker,qty,price
+acct_a,TIGER 미국S&P500,360750,1000,15000
+acct_b,ACE 미국S&P500,360200,500,20000
+acct_a,ACE 종합채권(AA-이상),356540,50,100000
+acct_a,ACE KRX금현물,411060,300,20000
+acct_b,TIGER KRX금현물,0072R0,100,30500
