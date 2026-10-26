@@ -42,8 +42,9 @@ def _real_numbers(view: str) -> dict:
         sub = tagged[tagged["account_id"].isin([a for a in pv["accounts"] if a in ids])]
         if sub.empty or not has_targets(pv.get("strategy") or ""):
             continue
-        r = compute_rebalance(sub, load_strategy(pv["strategy"]), accounts=accounts, mode=pv.get("mode", "rebalance"),
-                              defaults=defaults_with_prices(sub, live=False))
+        strat = load_strategy(pv["strategy"])
+        r = compute_rebalance(sub, strat, accounts=accounts, mode=pv.get("mode", "rebalance"),
+                              defaults=defaults_with_prices(sub, live=False, instruments=strat.instruments))
         proposals.append({"pool": pv.get("label", pid), "mode": pv.get("mode", "rebalance"), "triggered": r.triggered,
                           "headline": explain.headline(r), "blocked": r.blocked_reason})
     return {"registered": True, "owner": owner, "pension": pension, "cash": cash, "total": pension + cash,
@@ -197,16 +198,19 @@ def rebalancing(view: str) -> None:
     with st.expander("자산군 기본 종목 고르기 — 보유가 없는 자산군을 살 때 쓰는 종목 (후보 중 선택, 바꿀 수 있음)"):
         import yaml as _yaml
         from tools.assets import ASSET_MAP_PATH, load_class_defaults, save_asset_map
+        from tools.strategy import class_label
         cd = load_class_defaults()
         picks, changed = {}, False
         for cls, d in cd.items():
             options = [(d.get("ticker"), d.get("name"))] + [(a["ticker"], a["name"]) for a in d.get("alternatives", []) if a["ticker"] != d.get("ticker")]
             labels_ = [f"{n} ({t})" for t, n in options]
-            idx = st.selectbox(CLASS_LABELS.get(cls, cls), range(len(options)), format_func=lambda i, L=labels_: L[i], key=f"cd_{cls}")
+            idx = st.selectbox(class_label(cls, strategy), range(len(options)), format_func=lambda i, L=labels_: L[i], key=f"cd_{cls}")
             picks[cls] = options[idx]
             if options[idx][0] != d.get("ticker"):
                 changed = True
-        st.caption("기준: 계좌 적격 → 역할(만기·통화) 일치 → 실물형 우선 → 보수·거래량 → 쓰던 운용사. 비교표는 docs/wiki/products/ (리서치 중). 도구는 고르지 않습니다, 본인이 고릅니다.")
+        if strategy.instruments:
+            st.caption("이 전략이 직접 지정한 종목(strategies.yaml instruments)이 우선: " + ", ".join(f"{class_label(c, strategy)}={d.get('name')}" for c, d in strategy.instruments.items()))
+        st.caption("기준: 계좌 적격 → 전략이 정한 유형(국가·만기·환) → 실물형 우선 → 보유 많은 운용사 → 거래량 → 보수 (REBALANCING §1-2). 비교표는 docs/wiki/products/. 도구는 고르지 않습니다, 본인이 고릅니다.")
         if st.button("기본 종목 저장", disabled=not changed):
             for cls, (t, n) in picks.items():
                 d = cd[cls]
@@ -217,7 +221,7 @@ def rebalancing(view: str) -> None:
             data = _yaml.safe_load(ASSET_MAP_PATH.read_text(encoding="utf-8"))
             save_asset_map(data.get("assets") or {}, cd)
             st.success("저장했어요 (rules/asset_map.yaml class_defaults)."); st.rerun()
-    defaults = defaults_with_prices(holdings, live=True)
+    defaults = defaults_with_prices(holdings, live=True, instruments=strategy.instruments)
     r = compute_rebalance(holdings, strategy, new_cash=new_cash, accounts=accounts, mode=mode, defaults=defaults, full_align=full_align)
     last = read_decisions()
 

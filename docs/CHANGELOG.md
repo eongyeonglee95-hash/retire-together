@@ -1,6 +1,13 @@
 # CHANGELOG
 
 ## 2026-10-26
+- wiki/strategies/kim-sungil-k-all-weather: 저자 본인 칼럼(교보 뉴스룸 4편 2026-10-12)으로 보강 — 국채 30년 장기채·현금성 예시 ETF(초단기채·CD/머니마켓)·월 1회 리밸런싱(밴드 없음) 확인. 2022·2023 보도(17.5/15)와 다른 구성(B: 4개 지역 주식 50·국채 30·금 20·현금 0~40)을 별도 YAML 후보로 추가. 책 본문 비율은 미확인 유지. YAML·RULES 변경 없음
+- wiki/strategies/parkgomhee: 보강 시도 — 공격형 해외주식 25(합 100) 기사 2건으로 재확인, 임계치 없음 재확인. ETF 종목 유형·계좌별 구성은 미확인 유지(영상 페이지 자막 미노출, 책 확인 필요). YAML·RULES 변경 없음
+- TAX_RULES: 위키 조문 대조 6건 반영(종신형 3.3%, 50% 구간 시기, 의료 인출 제외, 수령연차 기산점, ISA 주석, 출처 교체). REBALANCING §3 연금저축·IRP 근거 구체화, §4 설명 재료 4줄 추가(Vanguard·Bernstein·김성일). §2 밴드만 확정
+- REBALANCING §4-1 신설: 원형에서 바꾼 것과 사유(금=원자재 15, 장기채 환노출, 중기채 추가 매수 국고채10년, 종목 선택 룰) — Agent 설명 재료. (코드) 전략별 자산군 표시 이름 `labels`(올웨더 gold → "금 (=원자재)") 화면·주문표 반영
+- strategies.yaml 올웨더: 원자재 7.5 → 금에 합쳐 금 15 (사용자 결정, 원형과 다름을 주석에). (코드) 전략 지정 종목(instruments)은 보유 종목보다 먼저 산다. 올웨더 장기채 ACE 미국30년국채액티브(환노출)·중기채 ACE 국고채10년 지정, ACE 종합채권은 mid_bond 유지. 테스트 1개
+- (코드) 기본 종목 2층 구조: strategies.yaml 전략별 `instruments`(자산군별 유형·종목) → 없으면 asset_map class_defaults. Strategy.instruments, defaults_with_prices(instruments=) 추가, 테스트 1개. REBALANCING §1-2 반영. asset_map: 보유 9종목 전부 confirmed, 금 기본 종목 ACE 확정
+- REBALANCING §1-2 기본 종목 기준 순서 변경: 이미 많이 보유한 운용사 > 거래량 > 총보수 (사용자 룰). asset_map: 주식 core 3종(TIGER S&P500·ACE S&P500·ACE 나스닥100) confirmed
 - docs/wiki/ 리서치 초안 10장: 투자 룰(달리오·김성일·박곰희·책 원칙), 상품(보유 9종목 근거·장기채/원자재 후보), 출처(세법 조문 대조·연금계좌 제도·증권사 API·시세 소스). YAML·RULES는 변경 없음, 수정 제안은 각 페이지에
 - AGENT_DESIGN: 리서치 트랙 체크, 사용자 결정 5개 추가. MASTER_CONTEXT: 미래에셋 Open API 존재 주장 정정
 - `/wiki-research update`를 Sonnet 전용 에이전트 `wiki-updater`(.claude/agents/)로 실행하도록 변경. 새 주제 조사는 세션 모델 유지

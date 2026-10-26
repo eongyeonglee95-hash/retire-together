@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 import pandas as pd
 
 from tools.assets import ConstraintResult, check_constraints
-from tools.strategy import CLASS_LABELS, Strategy
+from tools.strategy import Strategy, class_label
 
 
 @dataclass
@@ -56,6 +56,7 @@ class RebalanceResult:
     explain_inputs: dict
     blocked_reason: str | None = None
     notes: list[str] = field(default_factory=list)
+    labels: dict[str, str] = field(default_factory=dict)  # 자산군 → 표시 이름 (전략 labels 반영)
 
     def orders_df(self) -> pd.DataFrame:
         return pd.DataFrame([o.__dict__ for o in self.orders])
@@ -103,7 +104,7 @@ def compute_rebalance(
         w = a / T if T else 0.0
         d = w - t
         classes.append({
-            "asset_class": cls, "label": CLASS_LABELS.get(cls, cls),
+            "asset_class": cls, "label": class_label(cls, strategy),
             "target": t, "current": w, "deviation_pp": round(d * 100, 2),
             "value": a, "over_threshold": abs(d) > strategy.threshold + 1e-12,
         })
@@ -111,7 +112,7 @@ def compute_rebalance(
     for cls, a in class_vals.items():
         if cls not in strategy.targets and cls != "cash":
             w = a / T if T else 0.0
-            classes.append({"asset_class": cls, "label": CLASS_LABELS.get(cls, cls), "target": 0.0,
+            classes.append({"asset_class": cls, "label": class_label(cls, strategy), "target": 0.0,
                             "current": w, "deviation_pp": round(w * 100, 2), "value": a,
                             "over_threshold": w > strategy.threshold})
     triggered = any(c["over_threshold"] for c in classes)
@@ -134,7 +135,7 @@ def compute_rebalance(
         strategy_id=strategy.id, strategy_name=strategy.name, threshold=strategy.threshold,
         min_trade_krw=strategy.min_trade_krw, total_value=int(T), new_cash=C, total_after_cash=int(T2),
         classes=classes, triggered=triggered, constraints=constraints, orders=[],
-        explain_inputs=explain_inputs,
+        explain_inputs=explain_inputs, labels={c["asset_class"]: c["label"] for c in classes},
     )
     if blocked:
         result.blocked_reason = " / ".join(f"{c.name}: {c.detail}" for c in blocked)
@@ -207,17 +208,20 @@ def compute_rebalance(
             if "role" in rows:
                 rows = rows[rows["role"] != "satellite"]  # 매수는 핵심 종목으로만
             rows = rows.sort_values("value", ascending=False)
-            if len(rows) == 0:
-                d = defaults.get(cls)
+            d = defaults.get(cls)
+            # 전략 지정 종목(strategies.yaml instruments)은 보유 종목보다 먼저 산다 (REBALANCING §1-2, 2026-10-26). 현재가 없으면 보유 종목으로
+            strategy_pick = bool(d and d.get("source") == "strategy" and d.get("price"))
+            if len(rows) == 0 or strategy_pick:
                 if d and d.get("price"):
-                    # 기본 종목(asset_map.yaml class_defaults)으로 수량 계산
+                    # 기본 종목으로 수량 계산
                     qty = int(math.floor(amt / d["price"]))
                     amt_i = qty * int(d["price"])
                     if amt_i < strategy.min_trade_krw or qty <= 0:
                         orders.append(Order("생략", cls, acct, d.get("name"), d.get("ticker"), None, int(amt), "최소 거래 금액 미만"))
                         continue
                     orders.append(Order("매수", cls, acct, d.get("name"), d.get("ticker"), qty, amt_i,
-                                        "기본 종목 (asset_map.yaml class_defaults, 변경 가능)"))
+                                        "전략 지정 종목 (strategies.yaml instruments)" if d.get("source") == "strategy"
+                                        else "기본 종목 (asset_map.yaml class_defaults, 변경 가능)"))
                     short[cls] -= amt_i
                     acct_cash[acct] -= amt_i
                     have[cls] += amt_i
@@ -256,7 +260,7 @@ def compute_rebalance(
     remaining_short = {cls: int(v) for cls, v in short.items() if v >= strategy.min_trade_krw}
     if remaining_short:
         result.notes.append("현금 부족으로 목표에 못 미친 자산군: " +
-                            ", ".join(f"{CLASS_LABELS.get(k,k)} {v:,}원" for k, v in remaining_short.items()))
+                            ", ".join(f"{class_label(k, strategy)} {v:,}원" for k, v in remaining_short.items()))
     # 매도 먼저, 그다음 매수, 생략은 끝에
     order_rank = {"매도": 0, "매수": 1, "생략": 2}
     result.orders = sorted(orders, key=lambda o: (order_rank[o.side], o.account_id, -o.amount))

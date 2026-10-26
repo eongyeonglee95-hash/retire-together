@@ -2,56 +2,56 @@
 # 미등록 종목은 LLM이 첫 분류를 제안 → 사용자 확인 → 여기에 저장. 이후 실행은 이 파일만 읽는다.
 # 자산군 키: stock / long_bond / mid_bond / gold / commodity / cash
 # role: core(핵심, 넓은 지수·기본 종목) | satellite(위성, 테마·특정국가). 리밸런싱 매도는 satellite 먼저, 매수는 core로만.
-# status: proposed(제안, 사용자 확인 전) | confirmed(확인됨). 2026-10-26 아래 9개는 Claude 제안 — 확인해 주세요.
+# status: proposed(제안, 사용자 확인 전) | confirmed(확인됨). 2026-10-26 보유 9종목 사용자 확인 완료 (분류·role)
 assets:
   "KODEX 차이나휴머노이":          # 캡처에 잘려 보이는 이름 그대로가 키
     ticker: "0048K0"
     full_name: KODEX 차이나휴머노이드로봇
     asset_class: stock
     role: satellite
-    status: proposed
+    status: confirmed    # 2026-10-26 사용자 확인
   "TIGER KRX금현물":
     ticker: "0072R0"
     asset_class: gold
     role: core
-    status: proposed
+    status: confirmed    # 2026-10-26 사용자 확인
   "TIGER 미국S&P500":
     ticker: "360750"
     asset_class: stock
     role: core
-    status: proposed
+    status: confirmed    # 2026-10-26 사용자 확인
   "ACE 미국나스닥100":
     ticker: "367380"
     asset_class: stock
     role: core
-    status: proposed
+    status: confirmed    # 2026-10-26 사용자 확인
   "KODEX 인도타타그룹":
     ticker: "477730"
     asset_class: stock
     role: satellite
-    status: proposed
+    status: confirmed    # 2026-10-26 사용자 확인
   "TIGER 차이나휴머노이":
     ticker: "0053L0"
     full_name: TIGER 차이나휴머노이드로봇
     asset_class: stock
     role: satellite
-    status: proposed
+    status: confirmed    # 2026-10-26 사용자 확인
   "ACE 종합채권(AA-이상)":
     ticker: "356540"
     full_name: ACE 종합채권(AA-이상)액티브
-    asset_class: mid_bond      # 국내 종합채권(듀레이션 중기). 장기채로 볼지는 사용자 결정
+    asset_class: mid_bond      # 2026-10-26 사용자 확정: 중기채로 분류. 단 듀레이션 4.7년·회사채 혼합이라 올웨더 원형 중기채(미국 10년)보다 짧다 → 올웨더 신규 매수는 strategies.yaml instruments(ACE 국고채10년) 참고
     role: core
     status: proposed
   "ACE 미국S&P500":
     ticker: "360200"
     asset_class: stock
     role: core
-    status: proposed
+    status: confirmed    # 2026-10-26 사용자 확인
   "ACE KRX금현물":
     ticker: "411060"
     asset_class: gold
     role: core
-    status: proposed
+    status: confirmed    # 2026-10-26 사용자 확인
 
 # 자산군 기본 종목 — 그 자산군을 보유하지 않은 계좌에서 매수할 때 쓰는 종목 (2026-10-26 Claude 제안, 사용자 변경 가능)
 # 선택 규칙은 docs/REBALANCING_RULES.md §1-2. 후보(alternatives)는 공개 시세 검색으로 확인한 실제 상장 종목.
@@ -85,12 +85,12 @@ class_defaults:
   gold:
     ticker: "411060"
     name: ACE KRX금현물
-    status: proposed
+    status: confirmed        # 2026-10-26 사용자 확정: 보유 많은 운용사 + 순자산 큼 (§1-2 ④⑤). 총보수는 TIGER 0.15% < ACE 0.19%
     alternatives:
       - {ticker: "0072R0", name: TIGER KRX금현물}
   stock:
     ticker: "360750"
     name: TIGER 미국S&P500
-    status: proposed
+    status: confirmed        # 2026-10-26 사용자 확정: 보유 수량 많은 운용사 우선 + 거래량 (REBALANCING §1-2 ④⑤). 총보수는 ACE 0.0047% < TIGER 0.0068%이나 미미
     alternatives:
       - {ticker: "360200", name: ACE 미국S&P500}

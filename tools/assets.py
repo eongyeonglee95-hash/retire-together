@@ -98,12 +98,16 @@ def check_constraints(holdings: pd.DataFrame, accounts: dict[str, dict] | None =
     return results
 
 
-def defaults_with_prices(holdings: pd.DataFrame, live: bool = True) -> dict[str, dict]:
-    """class_defaults에 현재가를 붙인다. 보유 중인 종목이면 보유 가격, 아니면 공개 시세(live) 조회. 실패하면 price 없음."""
+def defaults_with_prices(holdings: pd.DataFrame, live: bool = True, instruments: dict[str, dict] | None = None) -> dict[str, dict]:
+    """기본 종목에 현재가를 붙인다. 전략이 지정한 종목(strategies.yaml instruments)이 있으면 그것, 없으면 asset_map class_defaults (REBALANCING §1-2).
+    보유 중인 종목이면 보유 가격, 아니면 공개 시세(live) 조회. 실패하면 price 없음."""
     out = {}
     held = {str(t): int(p) for t, p in zip(holdings.get("ticker", []), holdings.get("price", []))}
-    for cls, d in load_class_defaults().items():
-        entry = {"ticker": d.get("ticker"), "name": d.get("name"), "price": held.get(str(d.get("ticker")))}
+    merged = dict(load_class_defaults())
+    for cls, d in (instruments or {}).items():
+        merged[cls] = dict(d, source="strategy")
+    for cls, d in merged.items():
+        entry = {"ticker": d.get("ticker"), "name": d.get("name"), "price": held.get(str(d.get("ticker"))), "source": d.get("source", "class_defaults")}
         if entry["price"] is None and live and d.get("ticker"):
             try:
                 from tools.market import fetch_price

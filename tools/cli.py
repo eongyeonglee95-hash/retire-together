@@ -57,7 +57,7 @@ def main(argv: list[str] | None = None) -> int:
         new_cash = NewCash(args.new_cash, acct)
     accounts = load_accounts()
     labels = {k: v.get("label", k) for k, v in accounts.items()}
-    defaults = defaults_with_prices(holdings, live=True)
+    defaults = defaults_with_prices(holdings, live=True, instruments=strategy.instruments)
     r = compute_rebalance(holdings, strategy, new_cash=new_cash, accounts=accounts, mode=mode, defaults=defaults, full_align=args.full)
 
     print(f"\n전략: {r.strategy_name} · 임계치 ±{r.threshold*100:.0f}%p · 최소 거래 {r.min_trade_krw:,}원")

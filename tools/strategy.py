@@ -27,6 +27,8 @@ class Strategy:
     threshold: float                   # 발동 임계치 (절대, 0.05 = ±5%p)
     min_trade_krw: int
     shock: dict[str, float] = field(default_factory=dict)  # 가정 하락장 수익률
+    instruments: dict[str, dict] = field(default_factory=dict)  # 자산군 → 전략이 지정한 기본 종목 {ticker, name, type}. 없으면 asset_map class_defaults
+    labels: dict[str, str] = field(default_factory=dict)        # 자산군 표시 이름 덮어쓰기 (예: 올웨더 gold → "금 (=원자재)"). 없으면 CLASS_LABELS
 
 
 def load_strategy(strategy_id: str, path: Path = STRATEGIES_PATH) -> Strategy:
@@ -50,7 +52,16 @@ def load_strategy(strategy_id: str, path: Path = STRATEGIES_PATH) -> Strategy:
         threshold=float(raw.get("threshold_pp", 5)) / 100.0,
         min_trade_krw=int(raw.get("min_trade_krw", 100_000)),
         shock={k: float(v) for k, v in (data.get("shock") or {}).items()},
+        instruments={k: dict(v) for k, v in (raw.get("instruments") or {}).items() if v and v.get("ticker")},
+        labels={k: str(v) for k, v in (raw.get("labels") or {}).items()},
     )
+
+
+def class_label(cls: str, strategy: "Strategy | None" = None) -> str:
+    """자산군 표시 이름: 전략 labels → CLASS_LABELS → 키 그대로."""
+    if strategy and cls in strategy.labels:
+        return strategy.labels[cls]
+    return CLASS_LABELS.get(cls, cls)
 
 
 def list_strategies(path: Path = STRATEGIES_PATH) -> list[tuple[str, str]]:
@@ -71,7 +82,7 @@ def save_targets(strategy_id: str, targets_pct: dict[str, float], path: Path = S
         raw["threshold_pp"] = float(threshold_pp)
     if source is not None:
         raw["source"] = source
-    header = "# 전략 템플릿 — 비율 숫자의 단일 원천 (docs/REBALANCING_RULES.md §1). 화면 '비율 편집'에서 저장하면 이 파일이 다시 쓰인다.\n# 합계는 반드시 100. 사용자가 선택·수정한다. Agent는 바꾸지 않는다. shock: 설명용 가정 하락장 (CALCULATION_RULES §3)\n"
+    header = "# 전략 템플릿 — 비율 숫자의 단일 원천 (docs/REBALANCING_RULES.md §1). 화면 '비율 편집'에서 저장하면 이 파일이 다시 쓰인다.\n# 합계는 반드시 100. 사용자가 선택·수정한다. Agent는 바꾸지 않는다. shock: 설명용 가정 하락장 (CALCULATION_RULES §3)\n# instruments: 전략이 정한 자산군별 기본 종목(ticker 있으면 asset_map class_defaults보다 우선, REBALANCING §1-2)\n"
     path.write_text(header + yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
 
 

@@ -24,7 +24,7 @@ def orders_table(r: RebalanceResult, account_labels: dict[str, str] | None = Non
     for o in r.orders:
         rows.append({
             "구분": o.side,
-            "자산군": ", ".join(CLASS_LABELS.get(k, k) for k in o.asset_class.split(",")),
+            "자산군": ", ".join(r.labels.get(k) or CLASS_LABELS.get(k, k) for k in o.asset_class.split(",")),
             "계좌": labels.get(o.account_id, o.account_id),
             "종목": o.ticker_name or "—",
             "수량": f"{o.qty}주" if o.qty else "—",

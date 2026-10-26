@@ -149,3 +149,53 @@ def test_save_targets_roundtrip(tmp_path):
     assert abs(sum(load_strategy("all_weather", p).targets.values()) - 1) < 1e-9  # 다른 전략 보존
     with pytest.raises(ValueError):
         save_targets("custom", {"stock": 50}, path=p)
+
+
+def test_strategy_instruments_override_class_defaults(tmp_path, monkeypatch):
+    """전략이 지정한 종목(instruments)이 asset_map class_defaults보다 우선. 지정 없는 자산군은 class_defaults (REBALANCING §1-2)."""
+    import shutil
+    import yaml
+    from tools.assets import defaults_with_prices
+    from tools.strategy import STRATEGIES_PATH
+    p = tmp_path / "strategies.yaml"; shutil.copy(STRATEGIES_PATH, p)
+    data = yaml.safe_load(p.read_text(encoding="utf-8"))
+    data["strategies"]["all_weather"]["instruments"] = {"long_bond": {"ticker": "476760", "name": "ACE 미국30년국채액티브", "type": "미국 20년+"},
+                                                        "mid_bond": {"ticker": None, "name": None, "type": "미정"}}
+    p.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    s = load_strategy("all_weather", p)
+    assert set(s.instruments) == {"long_bond"}  # ticker 없는 항목은 지정 아님
+    d = defaults_with_prices(holdings(), live=False, instruments=s.instruments)
+    assert d["long_bond"]["ticker"] == "476760" and d["long_bond"]["source"] == "strategy"
+    assert d["mid_bond"]["ticker"] == "356540" and d["mid_bond"]["source"] == "class_defaults"
+    # 엔진: 보유 없는 장기채 매수는 전략 지정 종목으로
+    d["long_bond"]["price"] = 10_000
+    r = compute_rebalance(holdings(), strat(), new_cash=NewCash(3_000_000, "acct_a"), accounts=ACCOUNTS, mode="buy_only", defaults=d)
+    lb = [o for o in r.orders if o.asset_class == "long_bond" and o.side == "매수"]
+    assert lb and lb[0].ticker == "476760" and "전략 지정" in lb[0].note
+
+
+def test_strategy_instrument_beats_held_ticker_on_buy():
+    """전략 지정 종목이 있으면 그 자산군을 이미 보유한 계좌에서도 매수는 지정 종목으로 (REBALANCING §1-2 예외). 지정 없으면 보유 종목."""
+    h = holdings()
+    held_stock = h[(h["asset_class"] == "stock") & (h["account_id"] == "acct_a")]
+    assert len(held_stock) > 0
+    d = {"stock": {"ticker": "999999", "name": "전략지정주식", "price": 10_000, "source": "strategy"}}
+    s = strat(targets={"stock": 0.9, "gold": 0.1})  # 주식 부족하게 만들어 매수 유도
+    r = compute_rebalance(h, s, new_cash=NewCash(3_000_000, "acct_a"), accounts=ACCOUNTS, mode="buy_only", defaults=d)
+    buys = [o for o in r.orders if o.asset_class == "stock" and o.side == "매수" and o.account_id == "acct_a"]
+    assert buys and all(o.ticker == "999999" for o in buys)
+    d2 = {"stock": dict(d["stock"], source="class_defaults")}
+    r2 = compute_rebalance(h, s, new_cash=NewCash(3_000_000, "acct_a"), accounts=ACCOUNTS, mode="buy_only", defaults=d2)
+    buys2 = [o for o in r2.orders if o.asset_class == "stock" and o.side == "매수" and o.account_id == "acct_a"]
+    assert buys2 and all(o.ticker != "999999" for o in buys2)  # 공통 기본값은 보유 종목에 밀린다
+
+
+def test_strategy_labels_show_in_classes_and_order_sheet():
+    """전략 labels(올웨더 gold → '금 (=원자재)')가 자산군 표와 주문표에 나온다."""
+    from tools.order_sheet import classes_table, orders_table
+    s = load_strategy("all_weather")
+    assert s.labels.get("gold") == "금 (=원자재)"
+    r = compute_rebalance(holdings(), s, accounts=ACCOUNTS, mode="rebalance", full_align=True)
+    assert "금 (=원자재)" in classes_table(r)["자산군"].tolist()
+    gold_orders = orders_table(r)[orders_table(r)["구분"] != "생략"]
+    assert all(v != "금" for v in gold_orders["자산군"])  # 전략 라벨이 CLASS_LABELS를 덮는다
