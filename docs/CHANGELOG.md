@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## 2026-10-27
+- strategies.yaml park_gomhee 국내주식 종목 KODEX 200(069500)으로. wiki 박곰희 열린 질문 9 해결
 - strategies.yaml all_weather: 시그널스노우볼 해외 올웨더 템플릿으로 교체(30/15/40/8/7, 종목 5개). REBALANCING §4-1 사유 다시 씀(26일 결정 3건 뒤집음). DECISIONS 기록
 - DECISIONS: 전략 카드 "예) 종목 + 면책 문구" 표시 방식 채택(시그널스노우볼 참고). 구현은 UI 트랙
 - strategies.yaml park_gomhee: 책 비율(stock 70 / long_bond 20 / gold 5 / cash 5)·종목 4개·labels 반영. 이름 "박곰희 포트폴리오"로
