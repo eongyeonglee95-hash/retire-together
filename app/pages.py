@@ -349,9 +349,12 @@ def _asset_sheet(accounts: dict, root) -> None:
     c1.metric("총 평가금액", f"{total:,}원")
     c2.metric("계좌 수", f"{holdings['account_id'].nunique()}개")
     c3.metric("종목 수", f"{len(sheet)}개")
-    st.dataframe(sheet, hide_index=True, use_container_width=True,
-                 column_config={"평가금액": st.column_config.NumberColumn(format="%d"), "매입금액": st.column_config.NumberColumn(format="%d"),
-                                "현재가": st.column_config.NumberColumn(format="%d"), "손익": st.column_config.NumberColumn(format="%d")})
+    sheet = sheet.sort_values(["소유자", "계좌", "자산군", "평가금액"], ascending=[True, True, True, False]).reset_index(drop=True)
+    palette = ["#f4f6fb", "#fff7ee", "#f1f8f2", "#f8f1fa"]  # 계좌마다 다른 옅은 배경
+    acct_color = {a: palette[i % len(palette)] for i, a in enumerate(sheet["계좌"].unique())}
+    styled = sheet.style.apply(lambda row: [f"background-color: {acct_color[row['계좌']]}"] * len(row), axis=1) \
+        .format({"평가금액": "{:,.0f}", "매입금액": "{:,.0f}", "현재가": "{:,.0f}", "손익": "{:+,.0f}", "수량": "{:,.0f}"}, na_rep="—")
+    st.dataframe(styled, hide_index=True, use_container_width=True)
     st.markdown("**자산군별 합계**")
     by_cls = sheet.groupby("자산군")["평가금액"].sum().sort_values(ascending=False)
     st.dataframe(pd.DataFrame({"자산군": by_cls.index, "평가금액": by_cls.values, "비중": (by_cls.values / total * 100).round(1)}),
