@@ -25,6 +25,8 @@
 | SAFE-01 | 저장 경로·계좌·수량·가격·합계 재검증 | 완료 | 기존 Claude 세션 7da8fa60 (수락·완료 2026-10-27) | `tests/test_safety.py` 5개가 보고서 §4 합성 입력(../outside, 수량 -2·1.9, value 전사 오류, 미등록 계좌, 0행 저장)을 재현 → 수정 후 통과. `tools/parse_balance.validate_holdings`·`ReconcileResult`, `tools/store.save_holdings`(등록·활성·형식·빈 표·경로 검사), `tools/assets.check_constraints`("계좌 등록·사용 중"). Streamlit 입력 화면은 오류 표시만 추가. 전체 55 passed |
 | SAFE-02 | 신규 매수 후보 적격·전략 범위·계좌 전환 검증 | 대기 | Claude 구현 인계 예정, 미수락 | 후보 종목도 제약 검사, 잘못된 비율 거부, 계좌 전환 시 오저장 방지 |
 | UI-01 | 컨셉 홈·공통 레이아웃·모바일을 고정 데모로 구현 | 진행 | Codex: `web/`, `scripts/dev-web.sh`, 화면 검수 기록 | 1440/1024/390px 화면, 360px 넘침 없음, 컨셉 비교와 사용자 시각 검수 |
+| PROFILE-01 | 나/배우자의 만 나이·성별·아내/남편 역할, 은퇴 목표 입력 | 진행 (사용자 추가 요청) | Codex: `web/`, `backend/`, `tests/test_local_data.py` | 저장·재조회, 나이 검증, 실제 데이터에 기본 예시를 섞지 않음 |
+| ASSET-01 | 수동 자산·대출 등록/수정/삭제, 소유자별 홈 연결 | 진행 (사용자 추가 요청) | Codex: `web/`, `backend/`, SQLite | 빈 상태 → 입력 → 새로고침 유지, 범위·합계 검증, 예시/실제 완전 분리 |
 | DATA-01 | FastAPI·입력 계약·SQLite·계좌/보유/가격 연결 | 기반 착수, 실데이터 연결 대기 | Codex: `backend/`의 읽기 전용 전략 API·로컬 실행 기반과 `pyproject.toml`/`uv.lock`. `tools/` 변경은 Claude SAFE 작업과 인계 후 | 홈/자산/상세 금액·기준일·계좌 범위 일치, 누락/오래된 자료 표시. SQLite·실보유 연결은 아직 미구현 |
 | FLOW-01 | 캡처/CSV→확인→저장→주문표→결정 기록 | 대기 (위와 같음. 연결 전까지 기능은 Streamlit `app/`) | Claude 구현 인계 예정, 미수락 | E2E 통과, 중복 제출/가격·규칙 버전/결정 사유 재조회 검증 |
 | RETIRE-01 | 연금 목표·현금흐름·가정별 실제 시뮬레이션 | 대기 (후속) | 후속 구현 | 가정 변경 시 서버 계산·차트 갱신, 계산 테스트 |
@@ -41,6 +43,7 @@
 - 제품 진행률에 과거 체크 수를 쓰지 않는다. 디자인/실데이터/동작/검증을 따로 보고한다. 테스트 성공이나 라이브러리 변경만으로 컨셉 화면 완료를 선언하지 않는다.
 
 협업 메모:
+- 2026-10-27 Codex: 사용자가 내 정보·배우자 역할·실제 자산 등록을 요청. PROFILE-01/ASSET-01 추가, 구체 인계는 `DEV_HANDOFF.md`. 수동 총액 입력만 연결하며 종목 파싱·주문 로직은 Claude 영역을 보존. 추가 인계 수신 대기.
 - 2026-10-27 Codex: 기존 Claude 세션 `7da8fa60-bf83-4c29-b3c1-69f041591bf8`에서 변경된 CLAUDE.md를 읽고 “리서치·결정 트랙으로 이어가면 됩니다. 화면 코드는 건드리지 않겠습니다”라고 응답한 기록 확인. 공유 파일을 통한 수신 확인이며 별도 직접 메시지를 보낸 것은 아님. a35d069에서도 다른 세션의 UI 전환 변경을 보존했다고 명시.
 - 2026-10-27 Claude(7da8fa60): BASE-01 완료 기록. 같은 날 `tools/rebalance.py`(cash 지정 종목 매수), `rules/strategies.yaml`(올웨더·박곰희), `rules/asset_map.yaml`, `tests/test_rebalance.py`를 리서치·결정 트랙에서 수정·커밋함 — UI 트랙은 이 파일들을 건드리지 않는다는 §0 원칙과 일치. SAFE-01/SAFE-02/DATA-01/FLOW-01은 아직 미수락.
 - 2026-10-27 사용자(Claude 세션에서, 22시 이후): React 전체 전환은 의도가 아니었고 "지금 다 하자는 건 아니었어". **지금 범위 = UI-01 홈 화면을 고정 데모로 목업처럼 만드는 것까지.** DATA-01·FLOW-01·RETIRE-01·SHARE-01은 보류, 회의 뒤 Streamlit 유지/React 연결을 다시 정한다. 기능(등록·주문표·결정 기록)은 그때까지 Streamlit `app/`이 담당. SAFE-01/02는 엔진 검증이라 스택과 무관 — Claude가 이어서 가능.

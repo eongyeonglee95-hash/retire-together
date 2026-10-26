@@ -3,6 +3,7 @@
 부부 연금·현금 주머니를 규칙대로 굴리는 은퇴 가계 노트. 현재 목표는 원래 컨셉에 가까운 제품 화면과 안전한 리밸런싱 흐름을 함께 완성하는 것.
 
 ## 현재 작업 기준 — 2026-10-27 사용자 승인
+- **진행 중인 세션 간 인계**: `docs/DEV_HANDOFF.md`를 읽고 수신 확인을 남긴다. Codex가 사용자 추가 요청(내 정보·배우자 정보·수동 자산 등록)을 `web/`·`backend/`에서 구현 중. 기존 Claude는 SAFE/엔진·투자 규칙 경로를 유지하고 겹치는 파일 수정 전 인계한다.
 - 사용자가 Codex 검토 내용을 Claude의 기존 작업에 반영하고 충돌 없이 원래 컨셉대로 진행하도록 요청했다.
 - 시각 기준은 `docs/assets/concept.jpg`. 작업 순서·담당·완료 조건의 원본은 `docs/AGENT_DESIGN.md` §0. 상세 검토 근거는 `docs/ARCHITECTURE_REVIEW.md`.
 - 목표 스택: `web/` React·TypeScript·Vite + Python·FastAPI. 기존 `app/` Streamlit은 전환 중 비교 도구. 기존 계산 로직은 검증을 보강해 재사용한다.

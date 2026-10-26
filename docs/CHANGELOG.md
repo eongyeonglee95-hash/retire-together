@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## 2026-10-27
+- Codex: 컨셉 React 화면 구현 중. 사용자 추가 요청으로 PROFILE-01/ASSET-01(만 나이·성별·아내/남편 역할, 실제 자산 수동 등록·수정·삭제)을 우선 연결. DEV_HANDOFF로 기존 Claude에 담당 경로 전달, 추가 수신 확인 대기. Python/FastAPI 기반 및 의존성 추가.
 - (코드) SAFE-01: 입력·저장·계좌 검증 — CSV 행별 검증(양의 정수·중복·계좌 ID 형식), 합계 대조를 수량×가격 기준으로(ReconcileResult, 화면 합계 없으면 검증 불가), 저장은 등록·활성 계좌만·빈 표 거부·경로 이탈 차단, 미등록·비활성 계좌면 주문표 중단. 테스트 5개. REBALANCING §3 한 줄
 - AGENT_DESIGN §0: DATA/FLOW/RETIRE/SHARE를 보류했다가 사용자 번복으로 대기(계속 진행)로 복원. DECISIONS에 두 결정 모두 기록
 - (코드) compute_rebalance: 전략이 cash 종목을 지정하면 cash도 매수(매도 없음). REBALANCING §1-2 한 줄, asset_map에 TIGER 미국달러SOFR 태깅, 테스트 1개

@@ -1,7 +1,10 @@
 export type Owner = 'together' | 'me' | 'partner'
 export type Page = 'home' | 'assets' | 'pension' | 'rebalance'
-export type AssetClass = 'stock' | 'long_bond' | 'mid_bond' | 'gold' | 'cash' | 'property'
-export type Asset = { id: string; name: string; account: string; owner: Exclude<Owner, 'together'>; pocket: 'retirement' | 'cash' | 'property'; assetClass: AssetClass; amount: number }
+export type AssetClass = 'stock' | 'long_bond' | 'mid_bond' | 'gold' | 'commodity' | 'cash' | 'property' | 'mixed' | 'debt'
+export type Asset = { id: string; name: string; account: string; owner: Exclude<Owner, 'together'>; pocket: 'retirement' | 'cash' | 'property' | 'debt'; assetClass: AssetClass; amount: number; as_of?: string; version?: number; updated_at?: string }
+export type Person = { name: string; age: number; gender: 'female' | 'male' | 'unspecified'; role: 'wife' | 'husband' | 'partner' }
+export type Family = { me: Person; partner: Person | null; retirement_age: number; target_amount: number; version: number; updated_at: string }
+export type Snapshot = ReturnType<typeof getSnapshot>
 export type Strategy = { id: string; name: string; targets: Record<string, number>; labels: Record<string, string>; threshold: number; examples: { assetClass: string; name: string | null; ticker: string | null }[] }
 export const AS_OF = '2026.10.27'
 export const ownerLabels: Record<Owner, string> = { together: '부부 전체', me: '나', partner: '배우자' }
@@ -12,6 +15,9 @@ export const classInfo: Record<string, { label: string; color: string }> = {
   gold: { label: '금', color: '#e6ba69' },
   cash: { label: '현금', color: '#a1acc2' },
   property: { label: '부동산', color: '#a08cce' },
+  commodity: { label: '원자재', color: '#d397b5' },
+  mixed: { label: '혼합·미분류', color: '#bdc6d4' },
+  debt: { label: '대출', color: '#ce968a' },
 }
 
 // Entirely synthetic, fixed design-review data. No personal holdings imported.
@@ -41,9 +47,10 @@ export function getSnapshot(owner: Owner) {
   const property = sum(assets.filter(a => a.pocket === 'property'))
   const debt = owner === 'together' ? 100_000_000 : 50_000_000
   const classes = Object.entries(classInfo).map(([key, info]) => ({ key, ...info, amount: sum(assets.filter(a => a.assetClass === key)) })).filter(a => a.amount > 0)
-  return { assets, total, retirement, cash, property, debt, net: total - debt, financial: retirement + cash, classes }
+  return { assets, total, retirement, cash, property, debt, net: total - debt, financial: retirement + cash, classes, debts: [] as Asset[], count: assets.length, unclassified: 0, as_of: '2026-10-27' as string | null }
 }
 export function money(value: number) {
+  if (value < 0) return `−${money(-value)}`
   const rounded = Math.round(value / 10_000)
   const eok = Math.floor(rounded / 10_000)
   const man = rounded % 10_000
