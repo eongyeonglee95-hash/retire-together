@@ -6,6 +6,9 @@
 from __future__ import annotations
 
 import asyncio
+import math
+import re
+from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
@@ -38,21 +41,75 @@ CAPTURE_SCHEMA = {
 }
 
 
-def load_holdings_csv(path: str | Path) -> pd.DataFrame:
-    df = pd.read_csv(path, encoding="utf-8-sig", dtype={"ticker": str})
+ACCOUNT_ID_RE = re.compile(r"^[A-Za-z0-9_]{1,64}$")   # 저장 경로에 쓰이므로 경로 문자(/ . 공백) 금지
+
+
+def _is_whole_positive(v) -> bool:
+    """유한한 양의 정수값인지 (1.9, -2, 0, NaN, inf 는 아님). 문자열 '3'은 허용."""
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return False
+    return math.isfinite(f) and f > 0 and float(int(f)) == f
+
+
+def validate_holdings(df: pd.DataFrame) -> list[str]:
+    """보유 내역 표의 행·열별 오류 목록. 비어 있으면 통과 (SAFE-01: 입력 경계에서 타입·범위·중복·계좌 검증).
+    행 번호는 CSV 기준(머리글이 1행)."""
+    errors: list[str] = []
     missing = [c for c in HOLDING_COLUMNS if c not in df.columns]
     if missing:
-        raise ValueError(f"CSV에 없는 열: {missing}")
-    df["qty"] = df["qty"].astype(int)
-    df["price"] = df["price"].astype(int)
+        return [f"CSV에 없는 열: {missing}"]
+    for i, row in df.iterrows():
+        n = int(i) + 2
+        acct = row["account_id"]
+        if not isinstance(acct, str) or not ACCOUNT_ID_RE.match(acct):
+            errors.append(f"{n}행 account_id: 영문·숫자·밑줄만 허용 (받은 값: {acct!r})")
+        name = row["ticker_name"]
+        if not isinstance(name, str) or not name.strip():
+            errors.append(f"{n}행 ticker_name: 종목명이 비어 있음")
+        if not _is_whole_positive(row["qty"]):
+            errors.append(f"{n}행 qty: 양의 정수여야 함 (받은 값: {row['qty']!r})")
+        if not _is_whole_positive(row["price"]):
+            errors.append(f"{n}행 price: 양의 정수여야 함 (받은 값: {row['price']!r})")
+    dup = df.duplicated(subset=["account_id", "ticker_name"], keep=False)
+    if dup.any():
+        pairs = df.loc[dup, ["account_id", "ticker_name"]].drop_duplicates().itertuples(index=False)
+        errors.append("중복 행: " + ", ".join(f"{a}/{t}" for a, t in pairs) + " — 같은 계좌·종목은 한 행으로")
+    return errors
+
+
+def load_holdings_csv(path: str | Path) -> pd.DataFrame:
+    """CSV → 검증된 보유 내역. 잘못된 입력은 행/열별 메시지로 ValueError (잘라내거나 바꾸지 않는다)."""
+    df = pd.read_csv(path, encoding="utf-8-sig", dtype={"ticker": str, "account_id": str, "ticker_name": str})
+    errors = validate_holdings(df)
+    if errors:
+        raise ValueError("보유 내역 CSV 오류:\n" + "\n".join(errors))
+    df["qty"] = df["qty"].astype(float).astype(int)
+    df["price"] = df["price"].astype(float).astype(int)
     return df
 
 
-def reconcile(rows: pd.DataFrame, screen_total: int, tolerance: int = 5_000) -> tuple[bool, int]:
-    """파싱한 행의 합계와 화면 합계를 대조. 불일치면 사용자가 표를 고쳐 확정한다."""
-    total = int((rows["qty"] * rows["price"]).sum()) if "value" not in rows else int(rows["value"].sum())
-    diff = total - int(screen_total)
-    return abs(diff) <= tolerance, diff
+@dataclass(frozen=True)
+class ReconcileResult:
+    verified: bool      # 화면 합계가 있어서 대조할 수 있었는가. False면 '검증 불가'이지 '일치'가 아니다
+    ok: bool            # verified이고, 수량×가격 합계가 화면 합계와 맞고, 전사한 value도 수량×가격과 맞음
+    computed: int       # Σ 수량×가격 — 주문표 계산에 쓰는 값
+    diff: int           # computed − 화면 합계
+    value_total: int | None   # 전사한 평가금액 합계 (value 열이 있을 때)
+    value_diff: int | None    # value_total − computed
+
+
+def reconcile(rows: pd.DataFrame, screen_total: int | None, tolerance: int = 5_000) -> ReconcileResult:
+    """파싱한 행의 합계와 화면 합계를 대조. 합계는 항상 수량×가격으로 계산한다 — 전사한 value 열은 따로 대조만 한다
+    (SAFE-01: value 열 합계를 그대로 믿으면 수량×가격이 틀려도 '일치'로 통과했다)."""
+    computed = int((rows["qty"].astype(float) * rows["price"].astype(float)).sum())
+    value_total = int(rows["value"].astype(float).sum()) if "value" in rows else None
+    value_diff = (value_total - computed) if value_total is not None else None
+    verified = bool(screen_total)
+    diff = computed - int(screen_total or 0)
+    ok = verified and abs(diff) <= tolerance and (value_diff is None or abs(value_diff) <= tolerance)
+    return ReconcileResult(verified, ok, computed, diff, value_total, value_diff)
 
 
 async def _parse_capture_async(image_paths: list[Path]) -> dict:
@@ -87,7 +144,8 @@ def parse_capture(image_paths: list[str | Path], account_id: str) -> tuple[pd.Da
     df = pd.DataFrame(data["rows"])
     df.insert(0, "account_id", account_id)
     df["ticker"] = None
-    ok, diff = reconcile(df, data["screen_total_value"]) if data["screen_total_value"] else (True, 0)
+    rc = reconcile(df, data["screen_total_value"])
     meta = {"account_label": data["account_label"], "screen_total_value": data["screen_total_value"],
-            "reconciled": ok, "diff": diff}
+            "reconciled": rc.ok, "verified": rc.verified, "diff": rc.diff, "value_diff": rc.value_diff,
+            "errors": validate_holdings(df)}
     return df[HOLDING_COLUMNS + ["value", "buy_value"]], meta

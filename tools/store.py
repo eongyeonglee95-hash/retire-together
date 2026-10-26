@@ -20,11 +20,32 @@ def _read(path: Path) -> pd.DataFrame:
     return pd.read_csv(path, encoding="utf-8-sig", dtype={"ticker": str})
 
 
-def save_holdings(account_id: str, df: pd.DataFrame, on: dt.date | None = None) -> Path:
-    on = on or dt.date.today()
-    out = SNAPSHOTS / account_id / f"{on.isoformat()}.csv"
-    out.parent.mkdir(parents=True, exist_ok=True)
+def save_holdings(account_id: str, df: pd.DataFrame, on: dt.date | None = None,
+                  accounts: dict[str, dict] | None = None) -> Path:
+    """계좌의 보유 내역을 스냅샷으로 저장. SAFE-01: 계좌 ID는 등록된 활성 계좌만(경로 문자 금지), 빈 표·잘못된 행은 거부,
+    스냅샷 폴더 밖에는 쓰지 않는다. accounts를 안 주면 rules/accounts.yaml을 읽는다."""
+    from tools.assets import load_accounts
+    from tools.parse_balance import ACCOUNT_ID_RE, validate_holdings
+
+    if not isinstance(account_id, str) or not ACCOUNT_ID_RE.match(account_id):
+        raise ValueError(f"계좌 ID 형식 오류: {account_id!r} (영문·숫자·밑줄만)")
+    accts = load_accounts() if accounts is None else accounts
+    if account_id not in accts:
+        raise ValueError(f"등록되지 않은 계좌: {account_id} (rules/accounts.yaml 또는 설정 화면에서 먼저 등록)")
+    if accts[account_id].get("active", True) is False:
+        raise ValueError(f"사용 안 함으로 표시된 계좌: {account_id}")
     df = df[df["account_id"] == account_id] if "account_id" in df else df.assign(account_id=account_id)
+    if len(df) == 0:
+        raise ValueError(f"계좌 {account_id}에 저장할 행이 없음 (표의 account_id가 다른 계좌인지 확인)")
+    errors = validate_holdings(df)
+    if errors:
+        raise ValueError("저장 거부:\n" + "\n".join(errors))
+    on = on or dt.date.today()
+    base = SNAPSHOTS.resolve()
+    out = (base / account_id / f"{on.isoformat()}.csv").resolve()
+    if base not in out.parents:
+        raise ValueError(f"스냅샷 폴더 밖 경로: {out}")
+    out.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(out, index=False, encoding="utf-8-sig")
     return out
 

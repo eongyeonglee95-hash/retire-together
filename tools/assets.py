@@ -80,6 +80,20 @@ def check_constraints(holdings: pd.DataFrame, accounts: dict[str, dict] | None =
     accts = load_accounts() if accounts is None else accounts
     results: list[ConstraintResult] = []
 
+    # SAFE-01: 계좌 목록에 없거나 '사용 안 함'인 계좌의 보유분으로는 주문표를 만들지 않는다 (계좌 종류를 모르면 제도 검사가 빠진다)
+    ids = [str(a) for a in holdings["account_id"].unique()]
+    unknown = [a for a in ids if a not in accts]
+    inactive = [a for a in ids if a in accts and accts[a].get("active", True) is False]
+    if unknown or inactive:
+        detail = []
+        if unknown:
+            detail.append("미등록 " + ", ".join(unknown))
+        if inactive:
+            detail.append("사용 안 함 " + ", ".join(inactive))
+        results.append(ConstraintResult("계좌 등록·사용 중", False, " · ".join(detail)))
+    else:
+        results.append(ConstraintResult("계좌 등록·사용 중", True, "통과"))
+
     bad = holdings[holdings["ticker_name"].str.contains(LEVERAGE_INVERSE_PATTERN)]
     pension_bad = bad[bad["account_id"].map(lambda a: accts.get(a, {}).get("account_type") in ("pension_savings", "irp"))]
     if len(pension_bad):

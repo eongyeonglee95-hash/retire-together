@@ -381,8 +381,13 @@ def input_page(view: str) -> None:
             meta = st.session_state["parsed_meta"]
             if meta.get("reconciled"):
                 st.success(f"화면 합계 {meta['screen_total_value']:,}원과 일치해요. 표를 확인하고 저장하세요.")
+            elif not meta.get("verified", True):
+                st.warning("캡처에서 화면 합계를 못 읽어 검증 불가예요. 수량·현재가를 직접 확인한 뒤 저장하세요.")
             else:
-                st.warning(f"화면 합계와 {meta.get('diff', 0):+,}원 차이가 있어요. 틀린 칸을 고친 뒤 저장하세요.")
+                extra = f" (전사한 평가금액과 수량×현재가 차이 {meta['value_diff']:+,}원)" if meta.get("value_diff") else ""
+                st.warning(f"화면 합계와 {meta.get('diff', 0):+,}원 차이가 있어요{extra}. 틀린 칸을 고친 뒤 저장하세요.")
+            for err in meta.get("errors", []):
+                st.error(err)
             for name, cands in meta.get("unresolved", []):
                 st.info(f"종목코드 미확정: {name} → 후보 {cands}. ticker 칸에 직접 넣어 주세요.")
             base = st.session_state["parsed"].copy()
@@ -406,8 +411,11 @@ def input_page(view: str) -> None:
                 label_to_key = {v: k for k, v in CLASS_LABELS.items()}
                 tags = [{"ticker_name": r["ticker_name"], "ticker": r.get("ticker"), "asset_class": label_to_key.get(r.get("자산군")),
                          "role": "satellite" if r.get("역할") == "위성" else "core"} for _, r in edited.iterrows()]
+                try:
+                    out = save_holdings(acct, edited.drop(columns=["자산군", "역할"]))
+                except ValueError as e:
+                    st.error(str(e)); return
                 n = upsert_asset_tags(tags)
-                out = save_holdings(acct, edited.drop(columns=["자산군", "역할"]))
                 st.success(f"저장: {out.relative_to(root)} · 종목 꼬리표 {n}개 확인됨 — 리밸런싱 화면이 계좌별 최신 파일을 합쳐 씁니다.")
                 del st.session_state["parsed"]
     with tab2:
@@ -417,7 +425,10 @@ def input_page(view: str) -> None:
             st.dataframe(df, hide_index=True, use_container_width=True)
             if st.button("이 CSV를 보유 내역으로 저장 (계좌별로 나눠 저장)"):
                 from tools.store import save_holdings
-                outs = [save_holdings(a, df) for a in df["account_id"].unique()]
+                try:
+                    outs = [save_holdings(a, df) for a in df["account_id"].unique()]
+                except ValueError as e:
+                    st.error(str(e)); return
                 st.success("저장: " + ", ".join(str(o.relative_to(root)) for o in outs))
     st.divider()
     st.caption("구글시트 연동·증권사 API 조회·대화형 입력은 v1.5 이후 (MASTER_PRD §4).")
